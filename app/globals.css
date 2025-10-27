@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+:root {
+  --brand-primary: #0f172a;
+  --brand-primary-strong: #0c1321;
+  --brand-on-primary: #ffffff;
+  --brand-secondary: #1e293b;
+  --brand-secondary-strong: #162032;
+  --brand-on-secondary: #ffffff;
+  --brand-background: #f8fafc;
+  --brand-surface: #ffffff;
+  --brand-surface-hover: #f1f5f9;
+  --brand-surface-border: #e2e8f0;
+  --brand-text: #0f172a;
+  --brand-muted-text: #475569;
+  --brand-accent: #0ea5e9;
+  --brand-accent-strong: #0284c7;
+}
+
+body {
+  background: var(--brand-background);
+  color: var(--brand-text);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: url("https://www.hiperban.com.br/images/website/black-logo.png") no-repeat center center;
+  background-size: 300px auto;
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 0;
+}
+
+main,
+header,
+form,
+section,
+div {
+  position: relative;
+  z-index: 1;
+}
+
+.bg-slate-50 {
+  background-color: var(--brand-background) !important;
+}
+
+.bg-white {
+  background-color: var(--brand-surface) !important;
+}
+
+.border-slate-200 {
+  border-color: var(--brand-surface-border) !important;
+}
+
+.text-slate-900 {
+  color: var(--brand-text) !important;
+}
+
+.text-slate-600,
+.text-slate-500 {
+  color: var(--brand-muted-text) !important;
+}
+
+.hover\:bg-slate-100:hover {
+  background-color: var(--brand-surface-hover) !important;
+}
+
+.bg-slate-900 {
+  background-color: var(--brand-primary) !important;
+  color: var(--brand-on-primary) !important;
+}
+
+.hover\:bg-slate-800:hover {
+  background-color: var(--brand-primary-strong) !important;
+}
+
+.text-emerald-600 {
+  color: var(--brand-accent) !important;
+}
+
+.hover\:bg-slate-50:hover {
+  background-color: var(--brand-surface-hover) !important;
+}
