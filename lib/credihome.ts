@@ -67,6 +67,15 @@ function coerceString(value: unknown): string | undefined {
   return undefined;
 }
 
+function coerceNumber(value: unknown): number | undefined {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return undefined;
+}
+
 function normalizeTimelineEntries(source: unknown): CredihomeProposalTimelineEntry[] {
   if (!Array.isArray(source)) return [];
 
@@ -230,14 +239,11 @@ export function normalizeCredihomeProposals(payload: unknown): CredihomeProposal
       coerceString(candidate.ultimaAtualizacao) ??
       undefined;
 
-    const offerValue =
-      candidate.offer && typeof candidate.offer === 'object'
+    const rawOfferCandidate =
+      (candidate.offer && typeof candidate.offer === 'object'
         ? (candidate.offer as Record<string, unknown>).value ??
           (candidate.offer as Record<string, unknown>).amount
-        : undefined;
-
-    const offerCandidate =
-      offerValue ??
+        : undefined) ??
       candidate.value ??
       candidate.amount ??
       candidate.creditValue ??
@@ -249,13 +255,13 @@ export function normalizeCredihomeProposals(payload: unknown): CredihomeProposal
       candidate.totalValue ??
       undefined;
 
-    const rateCandidate =
-      candidate.offer && typeof candidate.offer === 'object'
-        ? (candidate.offer as Record<string, unknown>).rate
-        : undefined;
+    const offerValue =
+      coerceNumber(rawOfferCandidate) ?? coerceString(rawOfferCandidate);
 
-    const rate =
-      rateCandidate ??
+    const rawRateCandidate =
+      (candidate.offer && typeof candidate.offer === 'object'
+        ? (candidate.offer as Record<string, unknown>).rate
+        : undefined) ??
       candidate.rate ??
       candidate.interestRate ??
       candidate.tax ??
@@ -263,6 +269,8 @@ export function normalizeCredihomeProposals(payload: unknown): CredihomeProposal
       candidate.taxaJuros ??
       candidate.juros ??
       undefined;
+
+    const rate = coerceNumber(rawRateCandidate) ?? coerceString(rawRateCandidate);
 
     const timelineSource =
       (candidate.history as unknown) ??
