@@ -90,6 +90,13 @@ export default function StorePage() {
       password: settings.credihomeApiPassword ?? undefined,
       partnerCode: settings.credihomePartnerCode ?? undefined,
       baseUrl: settings.credihomeApiUrl ?? undefined,
+      clientId: settings.credihomeClientId ?? undefined,
+      clientSecret: settings.credihomeClientSecret ?? undefined,
+      authPath: settings.credihomeAuthPath ?? undefined,
+      authGrantType: settings.credihomeAuthGrantType ?? undefined,
+      authExtraParams: settings.credihomeAuthExtraParams ?? undefined,
+      proposalsPath: settings.credihomeProposalsPath ?? undefined,
+      simulationsPath: settings.credihomeSimulationsPath ?? undefined,
     }),
     [
       settings.credihomeApiUrl,
@@ -97,6 +104,13 @@ export default function StorePage() {
       settings.credihomeApiUsername,
       settings.credihomeApiPassword,
       settings.credihomePartnerCode,
+      settings.credihomeClientId,
+      settings.credihomeClientSecret,
+      settings.credihomeAuthPath,
+      settings.credihomeAuthGrantType,
+      settings.credihomeAuthExtraParams,
+      settings.credihomeProposalsPath,
+      settings.credihomeSimulationsPath,
     ],
   );
 

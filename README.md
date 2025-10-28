@@ -83,8 +83,9 @@ O card **Crédito Imobiliário** da loja envia automaticamente os cadastros para
 | `CREDIHOME_PARTNER_CODE` | Não | Código de parceiro/canal enviado no campo `channel`. Útil para rastrear origens. |
 | `CREDIHOME_AUTH_HEADER` / `CREDIHOME_AUTH_SCHEME` | Não | Personalize o header e o prefixo utilizados para autenticação, se sua credencial exigir outro formato. |
 | `CREDIHOME_FALLBACK_HEADER` | Não | Header alternativo para enviar o token (padrão `x-api-key`). |
-| `CREDIHOME_AUTH_PATH` | Não | Caminho utilizado para solicitar o token. Padrão: `/oauth/token`. |
+| `CREDIHOME_AUTH_PATH` | Não | Caminho (ou URL completa) utilizado para solicitar o token. Padrão: `/oauth/token`. |
 | `CREDIHOME_PROPOSALS_PATH` | Não | Caminho da API utilizado para listar propostas. Padrão: `/proposals`. |
+| `CREDIHOME_SIMULATIONS_PATH` | Não | Caminho utilizado na simulação. Padrão: `/simulador`, conforme a documentação de Leads. |
 | `CREDIHOME_AUTH_GRANT_TYPE` | Não | Grant type utilizado na autenticação (padrão `password`). |
 | `CREDIHOME_CLIENT_ID` / `CREDIHOME_CLIENT_SECRET` | Não | Informe caso a API exija identificação adicional do cliente OAuth. Também são usados no header `Basic` quando definidos. |
 | `CREDIHOME_BASIC_AUTH` | Não | Caso já possua o hash Base64 do client (ex.: `client:secret`), informe neste campo para sobrescrever o header `Authorization: Basic`. |
@@ -93,6 +94,8 @@ O card **Crédito Imobiliário** da loja envia automaticamente os cadastros para
 > Caso a API exija campos adicionais, ajuste os formulários em `/app/store/page.tsx` e `/app/loja/[userId]/page.tsx`. A integração atual cobre nome, CPF, contato e dados básicos do imóvel e permite acompanhar o pipeline por protocolo, CPF ou e-mail.
 
 > As credenciais cadastradas em **Segurança → Credenciais Credihome** são anexadas automaticamente aos requests da simulação e da consulta de propostas, evitando falhas de autenticação durante os testes locais.
+
+> A própria tela de Segurança permite informar Client ID/Secret, caminhos personalizados (`/oauth/token`, `/simulador`, `/proposals`), grant type e parâmetros extras em JSON; todos os valores são persistidos localmente e enviados nos headers para a API durante as requisições.
 
 ## Gestão de planos e integração Asaas
 

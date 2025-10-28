@@ -56,6 +56,13 @@ type PlatformSettings = {
   credihomeApiPassword?: string;
   credihomePartnerCode?: string;
   credihomeApiUrl?: string;
+  credihomeClientId?: string;
+  credihomeClientSecret?: string;
+  credihomeAuthPath?: string;
+  credihomeProposalsPath?: string;
+  credihomeSimulationsPath?: string;
+  credihomeAuthGrantType?: string;
+  credihomeAuthExtraParams?: string;
   credentials: StoredCredential[];
   branding: Record<string, TenantBranding>;
 };
@@ -887,6 +894,13 @@ export function AuthProvider({ children }: Props) {
         credihomeApiPassword: incomingCredihomePassword,
         credihomePartnerCode: incomingCredihomePartnerCode,
         credihomeApiUrl: incomingCredihomeApiUrl,
+        credihomeClientId: incomingCredihomeClientId,
+        credihomeClientSecret: incomingCredihomeClientSecret,
+        credihomeAuthPath: incomingCredihomeAuthPath,
+        credihomeProposalsPath: incomingCredihomeProposalsPath,
+        credihomeSimulationsPath: incomingCredihomeSimulationsPath,
+        credihomeAuthGrantType: incomingCredihomeAuthGrantType,
+        credihomeAuthExtraParams: incomingCredihomeAuthExtraParams,
         ...otherSettings
       } = data;
 
@@ -1125,6 +1139,237 @@ export function AuthProvider({ children }: Props) {
         }
       }
 
+      let nextCredihomeClientId = previous.credihomeClientId;
+      if (typeof incomingCredihomeClientId !== 'undefined') {
+        const trimmed = incomingCredihomeClientId?.trim();
+        nextCredihomeClientId = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-client-id');
+        if (nextCredihomeClientId) {
+          const normalized = normalizeCredential({
+            id: 'credihome-client-id',
+            label: 'Client ID Credihome',
+            scope: 'integration',
+            value: nextCredihomeClientId,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeClientId) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-client-id');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-client-id',
+            label: 'Client ID Credihome',
+            scope: 'integration',
+            value: previous.credihomeClientId,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
+      let nextCredihomeClientSecret = previous.credihomeClientSecret;
+      if (typeof incomingCredihomeClientSecret !== 'undefined') {
+        const trimmed = incomingCredihomeClientSecret?.trim();
+        nextCredihomeClientSecret = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-client-secret');
+        if (nextCredihomeClientSecret) {
+          const normalized = normalizeCredential({
+            id: 'credihome-client-secret',
+            label: 'Client Secret Credihome',
+            scope: 'integration',
+            value: nextCredihomeClientSecret,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeClientSecret) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-client-secret');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-client-secret',
+            label: 'Client Secret Credihome',
+            scope: 'integration',
+            value: previous.credihomeClientSecret,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
+      let nextCredihomeAuthPath = previous.credihomeAuthPath;
+      if (typeof incomingCredihomeAuthPath !== 'undefined') {
+        const trimmed = incomingCredihomeAuthPath?.trim();
+        nextCredihomeAuthPath = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-auth-path');
+        if (nextCredihomeAuthPath) {
+          const normalized = normalizeCredential({
+            id: 'credihome-auth-path',
+            label: 'Caminho token Credihome',
+            scope: 'integration',
+            value: nextCredihomeAuthPath,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeAuthPath) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-auth-path');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-auth-path',
+            label: 'Caminho token Credihome',
+            scope: 'integration',
+            value: previous.credihomeAuthPath,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
+      let nextCredihomeProposalsPath = previous.credihomeProposalsPath;
+      if (typeof incomingCredihomeProposalsPath !== 'undefined') {
+        const trimmed = incomingCredihomeProposalsPath?.trim();
+        nextCredihomeProposalsPath = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-proposals-path');
+        if (nextCredihomeProposalsPath) {
+          const normalized = normalizeCredential({
+            id: 'credihome-proposals-path',
+            label: 'Caminho propostas Credihome',
+            scope: 'integration',
+            value: nextCredihomeProposalsPath,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeProposalsPath) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-proposals-path');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-proposals-path',
+            label: 'Caminho propostas Credihome',
+            scope: 'integration',
+            value: previous.credihomeProposalsPath,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
+      let nextCredihomeSimulationsPath = previous.credihomeSimulationsPath;
+      if (typeof incomingCredihomeSimulationsPath !== 'undefined') {
+        const trimmed = incomingCredihomeSimulationsPath?.trim();
+        nextCredihomeSimulationsPath = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-simulations-path');
+        if (nextCredihomeSimulationsPath) {
+          const normalized = normalizeCredential({
+            id: 'credihome-simulations-path',
+            label: 'Caminho simulações Credihome',
+            scope: 'integration',
+            value: nextCredihomeSimulationsPath,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeSimulationsPath) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-simulations-path');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-simulations-path',
+            label: 'Caminho simulações Credihome',
+            scope: 'integration',
+            value: previous.credihomeSimulationsPath,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
+      let nextCredihomeAuthGrantType = previous.credihomeAuthGrantType;
+      if (typeof incomingCredihomeAuthGrantType !== 'undefined') {
+        const trimmed = incomingCredihomeAuthGrantType?.trim();
+        nextCredihomeAuthGrantType = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-auth-grant-type');
+        if (nextCredihomeAuthGrantType) {
+          const normalized = normalizeCredential({
+            id: 'credihome-auth-grant-type',
+            label: 'Grant type Credihome',
+            scope: 'integration',
+            value: nextCredihomeAuthGrantType,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeAuthGrantType) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-auth-grant-type');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-auth-grant-type',
+            label: 'Grant type Credihome',
+            scope: 'integration',
+            value: previous.credihomeAuthGrantType,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
+      let nextCredihomeAuthExtraParams = previous.credihomeAuthExtraParams;
+      if (typeof incomingCredihomeAuthExtraParams !== 'undefined') {
+        const trimmed = incomingCredihomeAuthExtraParams?.trim();
+        nextCredihomeAuthExtraParams = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-auth-extra-params');
+        if (nextCredihomeAuthExtraParams) {
+          const normalized = normalizeCredential({
+            id: 'credihome-auth-extra-params',
+            label: 'Parâmetros extras Credihome',
+            scope: 'integration',
+            value: nextCredihomeAuthExtraParams,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeAuthExtraParams) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-auth-extra-params');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-auth-extra-params',
+            label: 'Parâmetros extras Credihome',
+            scope: 'integration',
+            value: previous.credihomeAuthExtraParams,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
       nextCredentials = normalizeCredentialList(nextCredentials);
 
       let nextBranding = previous.branding ?? {};
@@ -1144,6 +1389,13 @@ export function AuthProvider({ children }: Props) {
         credihomeApiPassword: nextCredihomePassword,
         credihomeApiUrl: nextCredihomeApiUrl,
         credihomePartnerCode: nextCredihomePartnerCode,
+        credihomeClientId: nextCredihomeClientId,
+        credihomeClientSecret: nextCredihomeClientSecret,
+        credihomeAuthPath: nextCredihomeAuthPath,
+        credihomeProposalsPath: nextCredihomeProposalsPath,
+        credihomeSimulationsPath: nextCredihomeSimulationsPath,
+        credihomeAuthGrantType: nextCredihomeAuthGrantType,
+        credihomeAuthExtraParams: nextCredihomeAuthExtraParams,
       };
 
       if (!merged.asaasApiKey) {
@@ -1192,6 +1444,55 @@ export function AuthProvider({ children }: Props) {
         const stored = nextCredentials.find((item) => item.id === 'credihome-partner-code')?.value;
         if (stored) {
           merged.credihomePartnerCode = stored;
+        }
+      }
+
+      if (!merged.credihomeClientId) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-client-id')?.value;
+        if (stored) {
+          merged.credihomeClientId = stored;
+        }
+      }
+
+      if (!merged.credihomeClientSecret) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-client-secret')?.value;
+        if (stored) {
+          merged.credihomeClientSecret = stored;
+        }
+      }
+
+      if (!merged.credihomeAuthPath) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-auth-path')?.value;
+        if (stored) {
+          merged.credihomeAuthPath = stored;
+        }
+      }
+
+      if (!merged.credihomeProposalsPath) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-proposals-path')?.value;
+        if (stored) {
+          merged.credihomeProposalsPath = stored;
+        }
+      }
+
+      if (!merged.credihomeSimulationsPath) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-simulations-path')?.value;
+        if (stored) {
+          merged.credihomeSimulationsPath = stored;
+        }
+      }
+
+      if (!merged.credihomeAuthGrantType) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-auth-grant-type')?.value;
+        if (stored) {
+          merged.credihomeAuthGrantType = stored;
+        }
+      }
+
+      if (!merged.credihomeAuthExtraParams) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-auth-extra-params')?.value;
+        if (stored) {
+          merged.credihomeAuthExtraParams = stored;
         }
       }
 

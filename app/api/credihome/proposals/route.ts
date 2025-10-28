@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   CredihomeError,
   fetchCredihome,
+  getCredihomeProposalsPath,
   normalizeCredihomeProposals,
   readCredihomeCredentialHeaders,
 } from '@/lib/credihome';
@@ -24,9 +25,8 @@ export async function GET(request: NextRequest) {
   if (document) searchParams.set('document', document);
   if (email) searchParams.set('email', email);
 
-  const proposalsPath = process.env.CREDIHOME_PROPOSALS_PATH ?? '/proposals';
-
   const credentialOverrides = readCredihomeCredentialHeaders(request.headers);
+  const proposalsPath = getCredihomeProposalsPath(credentialOverrides);
 
   try {
     const data = await fetchCredihome(
