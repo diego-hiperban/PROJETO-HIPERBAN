@@ -38,13 +38,6 @@ export default function SecurityPage() {
     username: settings.credihomeApiUsername ?? '',
     password: settings.credihomeApiPassword ?? '',
     partnerCode: settings.credihomePartnerCode ?? '',
-    clientId: settings.credihomeClientId ?? '',
-    clientSecret: settings.credihomeClientSecret ?? '',
-    authPath: settings.credihomeAuthPath ?? '',
-    proposalsPath: settings.credihomeProposalsPath ?? '',
-    simulationsPath: settings.credihomeSimulationsPath ?? '',
-    authGrantType: settings.credihomeAuthGrantType ?? '',
-    authExtraParams: settings.credihomeAuthExtraParams ?? '',
   });
   const [formState, setFormState] = useState({
     id: '',
@@ -74,13 +67,6 @@ export default function SecurityPage() {
       username: settings.credihomeApiUsername ?? '',
       password: settings.credihomeApiPassword ?? '',
       partnerCode: settings.credihomePartnerCode ?? '',
-      clientId: settings.credihomeClientId ?? '',
-      clientSecret: settings.credihomeClientSecret ?? '',
-      authPath: settings.credihomeAuthPath ?? '',
-      proposalsPath: settings.credihomeProposalsPath ?? '',
-      simulationsPath: settings.credihomeSimulationsPath ?? '',
-      authGrantType: settings.credihomeAuthGrantType ?? '',
-      authExtraParams: settings.credihomeAuthExtraParams ?? '',
     });
     setCredihomeFeedback('');
   }, [
@@ -89,13 +75,6 @@ export default function SecurityPage() {
     settings.credihomeApiUsername,
     settings.credihomeApiPassword,
     settings.credihomePartnerCode,
-    settings.credihomeClientId,
-    settings.credihomeClientSecret,
-    settings.credihomeAuthPath,
-    settings.credihomeProposalsPath,
-    settings.credihomeSimulationsPath,
-    settings.credihomeAuthGrantType,
-    settings.credihomeAuthExtraParams,
   ]);
 
   useEffect(() => {
@@ -174,13 +153,6 @@ export default function SecurityPage() {
     const normalizedUsername = credihomeForm.username.trim();
     const normalizedPassword = credihomeForm.password.trim();
     const normalizedPartnerCode = credihomeForm.partnerCode.trim();
-    const normalizedClientId = credihomeForm.clientId.trim();
-    const normalizedClientSecret = credihomeForm.clientSecret.trim();
-    const normalizedAuthPath = credihomeForm.authPath.trim();
-    const normalizedProposalsPath = credihomeForm.proposalsPath.trim();
-    const normalizedSimulationsPath = credihomeForm.simulationsPath.trim();
-    const normalizedGrantType = credihomeForm.authGrantType.trim();
-    const normalizedExtraParams = credihomeForm.authExtraParams.trim();
 
     updateSettings({
       credihomeApiUrl: normalizedUrl || undefined,
@@ -188,30 +160,17 @@ export default function SecurityPage() {
       credihomeApiUsername: normalizedUsername || undefined,
       credihomeApiPassword: normalizedPassword || undefined,
       credihomePartnerCode: normalizedPartnerCode || undefined,
-      credihomeClientId: normalizedClientId || undefined,
-      credihomeClientSecret: normalizedClientSecret || undefined,
-      credihomeAuthPath: normalizedAuthPath || undefined,
-      credihomeProposalsPath: normalizedProposalsPath || undefined,
-      credihomeSimulationsPath: normalizedSimulationsPath || undefined,
-      credihomeAuthGrantType: normalizedGrantType || undefined,
-      credihomeAuthExtraParams: normalizedExtraParams || undefined,
     });
 
+    const hasCredihomeValues =
+      Boolean(normalizedUrl) ||
+      Boolean(normalizedKey) ||
+      Boolean(normalizedUsername) ||
+      Boolean(normalizedPassword) ||
+      Boolean(normalizedPartnerCode);
+
     setCredihomeFeedback(
-      normalizedUrl ||
-        normalizedKey ||
-        normalizedUsername ||
-        normalizedPassword ||
-        normalizedPartnerCode ||
-        normalizedClientId ||
-        normalizedClientSecret ||
-        normalizedAuthPath ||
-        normalizedProposalsPath ||
-        normalizedSimulationsPath ||
-        normalizedGrantType ||
-        normalizedExtraParams
-        ? 'Credenciais Credihome salvas com sucesso.'
-        : 'Credenciais Credihome removidas.',
+      hasCredihomeValues ? 'Credenciais Credihome salvas com sucesso.' : 'Credenciais Credihome removidas.',
     );
   };
 
@@ -222,13 +181,6 @@ export default function SecurityPage() {
       username: '',
       password: '',
       partnerCode: '',
-      clientId: '',
-      clientSecret: '',
-      authPath: '',
-      proposalsPath: '',
-      simulationsPath: '',
-      authGrantType: '',
-      authExtraParams: '',
     });
     updateSettings({
       credihomeApiUrl: undefined,
@@ -236,13 +188,6 @@ export default function SecurityPage() {
       credihomeApiUsername: undefined,
       credihomeApiPassword: undefined,
       credihomePartnerCode: undefined,
-      credihomeClientId: undefined,
-      credihomeClientSecret: undefined,
-      credihomeAuthPath: undefined,
-      credihomeProposalsPath: undefined,
-      credihomeSimulationsPath: undefined,
-      credihomeAuthGrantType: undefined,
-      credihomeAuthExtraParams: undefined,
     });
     setCredihomeFeedback('Credenciais Credihome removidas.');
   };
@@ -290,20 +235,6 @@ export default function SecurityPage() {
       overrides.credihomeApiPassword = credential.value;
     } else if (normalizedId === 'credihome-partner-code') {
       overrides.credihomePartnerCode = credential.value;
-    } else if (normalizedId === 'credihome-client-id') {
-      overrides.credihomeClientId = credential.value;
-    } else if (normalizedId === 'credihome-client-secret') {
-      overrides.credihomeClientSecret = credential.value;
-    } else if (normalizedId === 'credihome-auth-path') {
-      overrides.credihomeAuthPath = credential.value;
-    } else if (normalizedId === 'credihome-proposals-path') {
-      overrides.credihomeProposalsPath = credential.value;
-    } else if (normalizedId === 'credihome-simulations-path') {
-      overrides.credihomeSimulationsPath = credential.value;
-    } else if (normalizedId === 'credihome-auth-grant-type') {
-      overrides.credihomeAuthGrantType = credential.value;
-    } else if (normalizedId === 'credihome-auth-extra-params') {
-      overrides.credihomeAuthExtraParams = credential.value;
     }
 
     updateSettings({
@@ -329,20 +260,6 @@ export default function SecurityPage() {
       overrides.credihomeApiPassword = undefined;
     } else if (credentialId === 'credihome-partner-code') {
       overrides.credihomePartnerCode = undefined;
-    } else if (credentialId === 'credihome-client-id') {
-      overrides.credihomeClientId = undefined;
-    } else if (credentialId === 'credihome-client-secret') {
-      overrides.credihomeClientSecret = undefined;
-    } else if (credentialId === 'credihome-auth-path') {
-      overrides.credihomeAuthPath = undefined;
-    } else if (credentialId === 'credihome-proposals-path') {
-      overrides.credihomeProposalsPath = undefined;
-    } else if (credentialId === 'credihome-simulations-path') {
-      overrides.credihomeSimulationsPath = undefined;
-    } else if (credentialId === 'credihome-auth-grant-type') {
-      overrides.credihomeAuthGrantType = undefined;
-    } else if (credentialId === 'credihome-auth-extra-params') {
-      overrides.credihomeAuthExtraParams = undefined;
     }
 
     updateSettings({
@@ -502,84 +419,6 @@ export default function SecurityPage() {
               />
               <span className="text-xs font-normal text-slate-500">Utilizado no campo <code className="rounded bg-slate-100 px-1">channel</code> para rastrear origens das propostas.</span>
             </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Client ID
-              <input
-                name="clientId"
-                value={credihomeForm.clientId}
-                onChange={handleCredihomeChange}
-                placeholder="app-client"
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              />
-              <span className="text-xs font-normal text-slate-500">Opcional. Informe caso o OAuth exija identificar o cliente além do usuário/senha.</span>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Client Secret
-              <input
-                type="password"
-                name="clientSecret"
-                value={credihomeForm.clientSecret}
-                onChange={handleCredihomeChange}
-                placeholder="segredo-app"
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              />
-              <span className="text-xs font-normal text-slate-500">Combine com o Client ID para gerar o header <code className="rounded bg-slate-100 px-1">Authorization: Basic</code>, se necessário.</span>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Caminho OAuth
-              <input
-                name="authPath"
-                value={credihomeForm.authPath}
-                onChange={handleCredihomeChange}
-                placeholder="/oauth/token"
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              />
-              <span className="text-xs font-normal text-slate-500">Use uma URL absoluta se o endpoint de token estiver em outro domínio.</span>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Grant type
-              <input
-                name="authGrantType"
-                value={credihomeForm.authGrantType}
-                onChange={handleCredihomeChange}
-                placeholder="password"
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              />
-              <span className="text-xs font-normal text-slate-500">Padrão <code className="rounded bg-slate-100 px-1">password</code>. Ajuste se a Credihome indicar outro fluxo.</span>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 md:col-span-2">
-              Parâmetros extras (JSON)
-              <input
-                name="authExtraParams"
-                value={credihomeForm.authExtraParams}
-                onChange={handleCredihomeChange}
-                placeholder='{"scope":"read"}'
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              />
-              <span className="text-xs font-normal text-slate-500">Inclua parâmetros adicionais que devam ir no corpo do token, como <code className="rounded bg-slate-100 px-1">scope</code> ou <code className="rounded bg-slate-100 px-1">audience</code>.</span>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Caminho propostas
-              <input
-                name="proposalsPath"
-                value={credihomeForm.proposalsPath}
-                onChange={handleCredihomeChange}
-                placeholder="/proposals"
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              />
-              <span className="text-xs font-normal text-slate-500">Personalize caso o endpoint de consulta utilize outro caminho.</span>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Caminho simulações
-              <input
-                name="simulationsPath"
-                value={credihomeForm.simulationsPath}
-                onChange={handleCredihomeChange}
-                placeholder="/simulador"
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              />
-              <span className="text-xs font-normal text-slate-500">Conforme a documentação, o simulador costuma responder em <code className="rounded bg-slate-100 px-1">/simulador</code>.</span>
-            </label>
 
             <div className="flex flex-wrap items-center gap-3 md:col-span-2">
               <button
@@ -602,7 +441,7 @@ export default function SecurityPage() {
           </form>
 
           <p className="text-xs text-slate-500">
-            Além de registrar aqui para fins de governança, lembre-se de definir as variáveis de ambiente <code className="rounded bg-slate-100 px-1">CREDIHOME_API_KEY</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_USERNAME</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_PASSWORD</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_BASE_URL</code> e, conforme a necessidade, <code className="rounded bg-slate-100 px-1">CREDIHOME_CLIENT_ID</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_CLIENT_SECRET</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_AUTH_PATH</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_SIMULATIONS_PATH</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_PROPOSALS_PATH</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_AUTH_GRANT_TYPE</code> e <code className="rounded bg-slate-100 px-1">CREDIHOME_AUTH_EXTRA_PARAMS</code> no servidor para que a integração funcione em produção.
+            Além de registrar aqui para fins de governança, lembre-se de definir as variáveis de ambiente <code className="rounded bg-slate-100 px-1">CREDIHOME_API_KEY</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_USERNAME</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_PASSWORD</code> e, se necessário, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_BASE_URL</code> e <code className="rounded bg-slate-100 px-1">CREDIHOME_PARTNER_CODE</code> no servidor para que a integração funcione em produção.
           </p>
         </article>
 
