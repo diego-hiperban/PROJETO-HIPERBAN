@@ -103,9 +103,9 @@ export function Navigation() {
             </div>
           )}
         </div>
-        <div className="w-full overflow-x-auto">
+        <div className="w-full">
           <nav
-            className="relative mx-auto flex min-w-max items-center justify-center gap-3 whitespace-nowrap text-sm font-medium sm:justify-center"
+            className="relative mx-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm font-medium sm:justify-center"
           >
             {primaryLinks.map((link) => (
               <Link
@@ -135,7 +135,7 @@ export function Navigation() {
                   </span>
                 </button>
                 {gestaoOpen && (
-                  <div className="absolute right-0 z-40 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 text-left shadow-xl shadow-slate-200">
+                  <div className="absolute left-1/2 z-40 mt-3 w-60 -translate-x-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 text-left shadow-xl shadow-slate-200 sm:left-auto sm:right-0 sm:translate-x-0">
                     {gestaoLinks.map((link) => (
                       <Link
                         key={link.href}
