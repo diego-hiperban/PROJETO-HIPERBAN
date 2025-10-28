@@ -69,61 +69,64 @@ function coerceString(value: unknown): string | undefined {
 
 function normalizeTimelineEntries(source: unknown): CredihomeProposalTimelineEntry[] {
   if (!Array.isArray(source)) return [];
-  return source
-    .map((entry, index) => {
-      if (!entry || typeof entry !== 'object') {
-        return null;
-      }
 
-      const value = entry as Record<string, unknown>;
-      const idCandidate =
-        value.id ??
-        value.eventId ??
-        value.code ??
-        value.identifier ??
-        index;
+  const timeline: CredihomeProposalTimelineEntry[] = [];
 
-      const labelCandidate =
-        value.status && typeof value.status === 'object'
-          ? (value.status as Record<string, unknown>).name ?? (value.status as Record<string, unknown>).description
-          : undefined;
+  source.forEach((entry, index) => {
+    if (!entry || typeof entry !== 'object') {
+      return;
+    }
 
-      const label =
-        coerceString(labelCandidate) ??
-        coerceString(value.label) ??
-        coerceString(value.description) ??
-        coerceString(value.event) ??
-        coerceString(value.stage) ??
-        coerceString(value.message) ??
-        'Atualização';
+    const value = entry as Record<string, unknown>;
+    const idCandidate =
+      value.id ??
+      value.eventId ??
+      value.code ??
+      value.identifier ??
+      index;
 
-      const date =
-        coerceString(value.date) ??
-        coerceString(value.createdAt) ??
-        coerceString(value.updatedAt) ??
-        coerceString(value.timestamp) ??
-        coerceString(value.occurredAt) ??
-        coerceString(value.occurred_at) ??
-        coerceString(value.eventDate) ??
-        coerceString(value.data);
+    const labelCandidate =
+      value.status && typeof value.status === 'object'
+        ? (value.status as Record<string, unknown>).name ?? (value.status as Record<string, unknown>).description
+        : undefined;
 
-      const description =
-        coerceString(value.notes) ??
-        coerceString(value.detail) ??
-        coerceString(value.details) ??
-        coerceString(value.comment) ??
-        coerceString(value.observation) ??
-        coerceString(value.observacao) ??
-        coerceString(value.info);
+    const label =
+      coerceString(labelCandidate) ??
+      coerceString(value.label) ??
+      coerceString(value.description) ??
+      coerceString(value.event) ??
+      coerceString(value.stage) ??
+      coerceString(value.message) ??
+      'Atualização';
 
-      return {
-        id: coerceString(idCandidate) ?? `${index}`,
-        label,
-        date: date ?? undefined,
-        description: description ?? undefined,
-      } satisfies CredihomeProposalTimelineEntry;
-    })
-    .filter((entry): entry is CredihomeProposalTimelineEntry => Boolean(entry));
+    const date =
+      coerceString(value.date) ??
+      coerceString(value.createdAt) ??
+      coerceString(value.updatedAt) ??
+      coerceString(value.timestamp) ??
+      coerceString(value.occurredAt) ??
+      coerceString(value.occurred_at) ??
+      coerceString(value.eventDate) ??
+      coerceString(value.data);
+
+    const description =
+      coerceString(value.notes) ??
+      coerceString(value.detail) ??
+      coerceString(value.details) ??
+      coerceString(value.comment) ??
+      coerceString(value.observation) ??
+      coerceString(value.observacao) ??
+      coerceString(value.info);
+
+    timeline.push({
+      id: coerceString(idCandidate) ?? `${index}`,
+      label,
+      date: date ?? undefined,
+      description: description ?? undefined,
+    });
+  });
+
+  return timeline;
 }
 
 function collectProposalCandidates(payload: unknown): Record<string, unknown>[] {
