@@ -301,7 +301,7 @@ export function normalizeCredihomeProposals(payload: unknown): CredihomeProposal
       status,
       stage,
       updatedAt,
-      offerValue: offerCandidate,
+      offerValue,
       rate,
       timeline,
       raw: candidate,
