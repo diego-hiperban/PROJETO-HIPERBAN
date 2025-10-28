@@ -85,7 +85,7 @@ export function Navigation() {
   }
 
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="relative z-50 border-b border-slate-200 bg-white">
       <div
         className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-4 px-6 py-4 sm:grid-cols-[auto,1fr,auto]"
       >
@@ -135,7 +135,7 @@ export function Navigation() {
                   </span>
                 </button>
                 {gestaoOpen && (
-                  <div className="absolute left-1/2 z-40 mt-3 w-60 -translate-x-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 text-left shadow-xl shadow-slate-200 sm:left-auto sm:right-0 sm:translate-x-0">
+                  <div className="absolute left-1/2 z-50 mt-3 w-60 -translate-x-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 text-left shadow-xl shadow-slate-200 sm:left-auto sm:right-0 sm:translate-x-0">
                     {gestaoLinks.map((link) => (
                       <Link
                         key={link.href}
