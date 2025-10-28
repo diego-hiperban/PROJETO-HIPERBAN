@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { CredihomeError, fetchCredihome } from '@/lib/credihome';
 
 export async function POST(request: NextRequest) {
   let body: any;
@@ -21,19 +22,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const baseUrl = (process.env.CREDIHOME_API_BASE_URL ?? 'https://api.credihome.com.br').replace(/\/$/, '');
-  const apiKey = process.env.CREDIHOME_API_KEY;
   const partnerCode = process.env.CREDIHOME_PARTNER_CODE;
-
-  if (!apiKey) {
-    return NextResponse.json(
-      {
-        error:
-          'Variável CREDIHOME_API_KEY não configurada. Defina as credenciais no ambiente antes de ativar a integração.',
-      },
-      { status: 500 },
-    );
-  }
 
   if (!body.channel && partnerCode) {
     body.channel = partnerCode;
@@ -46,45 +35,24 @@ export async function POST(request: NextRequest) {
     };
   }
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  };
-
-  const authHeader = process.env.CREDIHOME_AUTH_HEADER ?? 'Authorization';
-  const authScheme = process.env.CREDIHOME_AUTH_SCHEME ?? 'Bearer';
-  headers[authHeader] = `${authScheme} ${apiKey}`.trim();
-
-  const fallbackHeader = process.env.CREDIHOME_FALLBACK_HEADER ?? 'x-api-key';
-  if (!headers[fallbackHeader]) {
-    headers[fallbackHeader] = apiKey;
-  }
-
   try {
-    const upstreamResponse = await fetch(`${baseUrl}/simulations`, {
+    const response = await fetchCredihome('/simulations', {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(body),
     });
 
-    const responseText = await upstreamResponse.text();
-    let parsedResponse: unknown;
-
-    try {
-      parsedResponse = responseText ? JSON.parse(responseText) : null;
-    } catch (error) {
-      parsedResponse = responseText;
-    }
-
-    if (!upstreamResponse.ok) {
+    return NextResponse.json(response ?? {});
+  } catch (error) {
+    if (error instanceof CredihomeError) {
       return NextResponse.json(
-        { error: 'Erro retornado pela Credihome.', details: parsedResponse },
-        { status: upstreamResponse.status },
+        { error: error.message, details: error.details },
+        { status: 502 },
       );
     }
 
-    return NextResponse.json(parsedResponse ?? {});
-  } catch (error) {
     return NextResponse.json(
       {
         error: 'Falha ao conectar com a API da Credihome.',

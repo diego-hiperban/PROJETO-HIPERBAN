@@ -76,7 +76,7 @@ O card **Crédito Imobiliário** da loja envia automaticamente os cadastros para
 
 | Variável | Obrigatória | Descrição |
 |----------|-------------|-----------|
-| `CREDIHOME_API_KEY` | Sim | Token fornecido pela Credihome. É usado tanto no header `Authorization` (com prefixo `Bearer`) quanto no header `x-api-key`. |
+| `CREDIHOME_API_KEY` | Não | Token adicional fornecido pela Credihome. Quando informado, é enviado no header configurável (padrão `Authorization`) e no header auxiliar `x-api-key`. |
 | `CREDIHOME_API_BASE_URL` | Não | URL base da API. Padrão: `https://api.credihome.com.br`. |
 | `CREDIHOME_API_USERNAME` | Sim (para consulta de propostas) | Usuário utilizado para gerar o token OAuth na Credihome. |
 | `CREDIHOME_API_PASSWORD` | Sim (para consulta de propostas) | Senha utilizada na geração do token OAuth. |
