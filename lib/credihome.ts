@@ -320,6 +320,17 @@ export function getCredihomeBaseUrl() {
   return (process.env.CREDIHOME_API_BASE_URL ?? 'https://api.credihome.com.br').replace(/\/$/, '');
 }
 
+function getRequiredCredihomeApiKey() {
+  const apiKey = process.env.CREDIHOME_API_KEY?.trim();
+  if (!apiKey) {
+    throw new CredihomeError(
+      'Variável CREDIHOME_API_KEY não configurada. Cadastre as credenciais da Credihome na aba Segurança ou defina a variável de ambiente antes de usar a integração.',
+    );
+  }
+
+  return apiKey;
+}
+
 function getCredihomeTokenHeaders() {
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -336,18 +347,17 @@ function getCredihomeTokenHeaders() {
     headers.Authorization = `Basic ${encoded}`;
   }
 
-  const apiKey = process.env.CREDIHOME_API_KEY;
-  if (apiKey) {
-    const authHeader = process.env.CREDIHOME_AUTH_HEADER ?? 'Authorization';
-    const authScheme = process.env.CREDIHOME_AUTH_SCHEME ?? 'Bearer';
-    if (!headers[authHeader]) {
-      headers[authHeader] = `${authScheme} ${apiKey}`.trim();
-    }
+  const apiKey = getRequiredCredihomeApiKey();
+  const authHeader = process.env.CREDIHOME_AUTH_HEADER ?? 'Authorization';
+  const authScheme = process.env.CREDIHOME_AUTH_SCHEME ?? 'Bearer';
 
-    const fallbackHeader = process.env.CREDIHOME_FALLBACK_HEADER ?? 'x-api-key';
-    if (!headers[fallbackHeader]) {
-      headers[fallbackHeader] = apiKey;
-    }
+  if (!headers[authHeader]) {
+    headers[authHeader] = authScheme ? `${authScheme} ${apiKey}`.trim() : apiKey;
+  }
+
+  const fallbackHeader = process.env.CREDIHOME_FALLBACK_HEADER ?? 'x-api-key';
+  if (!headers[fallbackHeader]) {
+    headers[fallbackHeader] = apiKey;
   }
 
   return headers;
@@ -463,12 +473,20 @@ export async function fetchCredihome<T = unknown>(path: string, init?: RequestIn
 
   headers.Authorization = `Bearer ${token}`;
 
-  const apiKey = process.env.CREDIHOME_API_KEY;
-  if (apiKey) {
-    const fallbackHeader = process.env.CREDIHOME_FALLBACK_HEADER ?? 'x-api-key';
-    if (!headers[fallbackHeader]) {
-      headers[fallbackHeader] = apiKey;
-    }
+  const apiKey = getRequiredCredihomeApiKey();
+  const fallbackHeader = process.env.CREDIHOME_FALLBACK_HEADER ?? 'x-api-key';
+  if (!headers[fallbackHeader]) {
+    headers[fallbackHeader] = apiKey;
+  }
+
+  const customAuthHeader = process.env.CREDIHOME_AUTH_HEADER;
+  const authScheme = process.env.CREDIHOME_AUTH_SCHEME ?? 'Bearer';
+  if (
+    customAuthHeader &&
+    customAuthHeader !== 'Authorization' &&
+    !headers[customAuthHeader]
+  ) {
+    headers[customAuthHeader] = authScheme ? `${authScheme} ${apiKey}`.trim() : apiKey;
   }
 
   const response = await fetch(`${getCredihomeBaseUrl()}${path}`, {
