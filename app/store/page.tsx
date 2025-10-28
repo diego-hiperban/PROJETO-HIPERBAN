@@ -41,6 +41,7 @@ export default function StorePage() {
     getShareLink,
     getProductShareLink,
     getVisibleUsers,
+    settings,
   } = useAuth();
   const [ownerId, setOwnerId] = useState(currentUser?.id ?? '');
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
@@ -82,6 +83,25 @@ export default function StorePage() {
 
   const shareableUsers = useMemo(() => visibleUsers, [visibleUsers]);
 
+  const credihomeCredentials = useMemo(
+    () => ({
+      apiKey: settings.credihomeApiKey ?? undefined,
+      username: settings.credihomeApiUsername ?? undefined,
+      password: settings.credihomeApiPassword ?? undefined,
+      partnerCode: settings.credihomePartnerCode ?? undefined,
+    }),
+    [
+      settings.credihomeApiKey,
+      settings.credihomeApiUsername,
+      settings.credihomeApiPassword,
+      settings.credihomePartnerCode,
+    ],
+  );
+
+  const hasCredihomeCredentials = Boolean(
+    credihomeCredentials.apiKey && credihomeCredentials.username && credihomeCredentials.password,
+  );
+
   const parseNumberField = (value: string) => {
     if (!value) return 0;
     return Number(value.replace(/\./g, '').replace(',', '.')) || 0;
@@ -101,10 +121,15 @@ export default function StorePage() {
   };
 
   const loadCredihomeTracking = async (params: { document?: string; protocol?: string; email?: string }) => {
+    if (!hasCredihomeCredentials) {
+      setTrackingState((prev) => ({ ...prev, loading: false, error: 'Cadastre as credenciais da Credihome na aba Segurança antes de consultar o andamento.' }));
+      return;
+    }
+
     setTrackingState((prev) => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const result = await fetchCredihomeProposals(params);
+      const result = await fetchCredihomeProposals(params, { credentials: credihomeCredentials });
       setTrackingState({
         loading: false,
         error: '',
@@ -145,6 +170,11 @@ export default function StorePage() {
       return;
     }
 
+    if (!hasCredihomeCredentials) {
+      setModalError('Cadastre chave, usuário e senha da Credihome na aba Segurança antes de enviar a simulação.');
+      return;
+    }
+
     const propertyValue = parseNumberField(mortgageForm.propertyValue);
     const entryValue = parseNumberField(mortgageForm.downPayment);
     const monthlyIncome = parseNumberField(mortgageForm.monthlyIncome);
@@ -182,7 +212,7 @@ export default function StorePage() {
         },
       };
 
-      const response = await submitCredihomeSimulation(payload);
+      const response = await submitCredihomeSimulation(payload, { credentials: credihomeCredentials });
 
       const order = createOrder({
         productId: modalProduct.id,

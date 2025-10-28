@@ -92,6 +92,8 @@ O card **Crédito Imobiliário** da loja envia automaticamente os cadastros para
 
 > Caso a API exija campos adicionais, ajuste os formulários em `/app/store/page.tsx` e `/app/loja/[userId]/page.tsx`. A integração atual cobre nome, CPF, contato e dados básicos do imóvel e permite acompanhar o pipeline por protocolo, CPF ou e-mail.
 
+> As credenciais cadastradas em **Segurança → Credenciais Credihome** são anexadas automaticamente aos requests da simulação e da consulta de propostas, evitando falhas de autenticação durante os testes locais.
+
 ## Gestão de planos e integração Asaas
 
 A partir da aba **Financeiro (/billing)** cada usuário (ou gestor) acompanha o plano contratado, dias restantes de teste, histórico de pagamentos e pode gerar novos checkouts pelo Asaas. Masters também visualizam o consumo de licenças da equipe e conseguem adquirir usuários adicionais com cobrança automática.

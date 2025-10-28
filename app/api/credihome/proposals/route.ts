@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CredihomeError, fetchCredihome, normalizeCredihomeProposals } from '@/lib/credihome';
+import {
+  CredihomeError,
+  fetchCredihome,
+  normalizeCredihomeProposals,
+  readCredihomeCredentialHeaders,
+} from '@/lib/credihome';
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -21,10 +26,16 @@ export async function GET(request: NextRequest) {
 
   const proposalsPath = process.env.CREDIHOME_PROPOSALS_PATH ?? '/proposals';
 
+  const credentialOverrides = readCredihomeCredentialHeaders(request.headers);
+
   try {
-    const data = await fetchCredihome(`${proposalsPath}?${searchParams.toString()}`, {
-      method: 'GET',
-    });
+    const data = await fetchCredihome(
+      `${proposalsPath}?${searchParams.toString()}`,
+      {
+        method: 'GET',
+      },
+      { credentials: credentialOverrides },
+    );
 
     const proposals = normalizeCredihomeProposals(data);
 

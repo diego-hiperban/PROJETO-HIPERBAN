@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CredihomeError, fetchCredihome } from '@/lib/credihome';
+import { CredihomeError, fetchCredihome, readCredihomeCredentialHeaders } from '@/lib/credihome';
 
 export async function POST(request: NextRequest) {
   let body: any;
@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const partnerCode = process.env.CREDIHOME_PARTNER_CODE;
+  const credentialOverrides = readCredihomeCredentialHeaders(request.headers);
+
+  const partnerCode = credentialOverrides.partnerCode ?? process.env.CREDIHOME_PARTNER_CODE;
 
   if (!body.channel && partnerCode) {
     body.channel = partnerCode;
@@ -36,13 +38,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const response = await fetchCredihome('/simulations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetchCredihome(
+      '/simulations',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+      { credentials: credentialOverrides },
+    );
 
     return NextResponse.json(response ?? {});
   } catch (error) {
