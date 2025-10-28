@@ -33,6 +33,7 @@ export default function SecurityPage() {
   });
   const [credihomeFeedback, setCredihomeFeedback] = useState('');
   const [credihomeForm, setCredihomeForm] = useState({
+    apiUrl: settings.credihomeApiUrl ?? '',
     apiKey: settings.credihomeApiKey ?? '',
     username: settings.credihomeApiUsername ?? '',
     password: settings.credihomeApiPassword ?? '',
@@ -61,6 +62,7 @@ export default function SecurityPage() {
 
   useEffect(() => {
     setCredihomeForm({
+      apiUrl: settings.credihomeApiUrl ?? '',
       apiKey: settings.credihomeApiKey ?? '',
       username: settings.credihomeApiUsername ?? '',
       password: settings.credihomeApiPassword ?? '',
@@ -68,6 +70,7 @@ export default function SecurityPage() {
     });
     setCredihomeFeedback('');
   }, [
+    settings.credihomeApiUrl,
     settings.credihomeApiKey,
     settings.credihomeApiUsername,
     settings.credihomeApiPassword,
@@ -145,12 +148,14 @@ export default function SecurityPage() {
 
   const handleCredihomeSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const normalizedUrl = credihomeForm.apiUrl.trim();
     const normalizedKey = credihomeForm.apiKey.trim();
     const normalizedUsername = credihomeForm.username.trim();
     const normalizedPassword = credihomeForm.password.trim();
     const normalizedPartnerCode = credihomeForm.partnerCode.trim();
 
     updateSettings({
+      credihomeApiUrl: normalizedUrl || undefined,
       credihomeApiKey: normalizedKey || undefined,
       credihomeApiUsername: normalizedUsername || undefined,
       credihomeApiPassword: normalizedPassword || undefined,
@@ -158,15 +163,16 @@ export default function SecurityPage() {
     });
 
     setCredihomeFeedback(
-      normalizedKey || normalizedUsername || normalizedPassword || normalizedPartnerCode
+      normalizedUrl || normalizedKey || normalizedUsername || normalizedPassword || normalizedPartnerCode
         ? 'Credenciais Credihome salvas com sucesso.'
         : 'Credenciais Credihome removidas.',
     );
   };
 
   const handleClearCredihome = () => {
-    setCredihomeForm({ apiKey: '', username: '', password: '', partnerCode: '' });
+    setCredihomeForm({ apiUrl: '', apiKey: '', username: '', password: '', partnerCode: '' });
     updateSettings({
+      credihomeApiUrl: undefined,
       credihomeApiKey: undefined,
       credihomeApiUsername: undefined,
       credihomeApiPassword: undefined,
@@ -338,6 +344,20 @@ export default function SecurityPage() {
 
           <form onSubmit={handleCredihomeSubmit} className="grid gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+              URL da API
+              <input
+                type="url"
+                name="apiUrl"
+                value={credihomeForm.apiUrl}
+                onChange={handleCredihomeChange}
+                placeholder="https://api-partner.credihome.com.br"
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              />
+              <span className="text-xs font-normal text-slate-500">
+                Caso utilize um ambiente diferente do padrão, informe aqui para que as requisições locais apontem para o host correto.
+              </span>
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
               Chave de API*
               <input
                 type="password"
@@ -410,7 +430,7 @@ export default function SecurityPage() {
           </form>
 
           <p className="text-xs text-slate-500">
-            Além de registrar aqui para fins de governança, lembre-se de definir as variáveis de ambiente <code className="rounded bg-slate-100 px-1">CREDIHOME_API_KEY</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_USERNAME</code> e <code className="rounded bg-slate-100 px-1">CREDIHOME_API_PASSWORD</code> no servidor para que a integração funcione em produção.
+            Além de registrar aqui para fins de governança, lembre-se de definir as variáveis de ambiente <code className="rounded bg-slate-100 px-1">CREDIHOME_API_KEY</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_USERNAME</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_PASSWORD</code> e, se necessário, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_BASE_URL</code> no servidor para que a integração funcione em produção.
           </p>
         </article>
 

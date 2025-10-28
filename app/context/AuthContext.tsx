@@ -55,6 +55,7 @@ type PlatformSettings = {
   credihomeApiUsername?: string;
   credihomeApiPassword?: string;
   credihomePartnerCode?: string;
+  credihomeApiUrl?: string;
   credentials: StoredCredential[];
   branding: Record<string, TenantBranding>;
 };
@@ -788,6 +789,13 @@ export function AuthProvider({ children }: Props) {
             }
           }
 
+          if (!mergedSettings.credihomeApiUrl) {
+            const savedUrl = credentials.find((item) => item.id === 'credihome-api-url')?.value;
+            if (savedUrl) {
+              mergedSettings.credihomeApiUrl = savedUrl;
+            }
+          }
+
           if (!mergedSettings.credihomePartnerCode) {
             const savedPartnerCode = credentials.find((item) => item.id === 'credihome-partner-code')?.value;
             if (savedPartnerCode) {
@@ -878,6 +886,7 @@ export function AuthProvider({ children }: Props) {
         credihomeApiUsername: incomingCredihomeUsername,
         credihomeApiPassword: incomingCredihomePassword,
         credihomePartnerCode: incomingCredihomePartnerCode,
+        credihomeApiUrl: incomingCredihomeApiUrl,
         ...otherSettings
       } = data;
 
@@ -1050,6 +1059,39 @@ export function AuthProvider({ children }: Props) {
         }
       }
 
+      let nextCredihomeApiUrl = previous.credihomeApiUrl;
+      if (typeof incomingCredihomeApiUrl !== 'undefined') {
+        const trimmed = incomingCredihomeApiUrl?.trim();
+        nextCredihomeApiUrl = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-api-url');
+        if (nextCredihomeApiUrl) {
+          const normalized = normalizeCredential({
+            id: 'credihome-api-url',
+            label: 'URL API Credihome',
+            scope: 'integration',
+            value: nextCredihomeApiUrl,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeApiUrl) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-api-url');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-api-url',
+            label: 'URL API Credihome',
+            scope: 'integration',
+            value: previous.credihomeApiUrl,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
       let nextCredihomePartnerCode = previous.credihomePartnerCode;
       if (typeof incomingCredihomePartnerCode !== 'undefined') {
         const trimmed = incomingCredihomePartnerCode?.trim();
@@ -1100,6 +1142,7 @@ export function AuthProvider({ children }: Props) {
         credihomeApiKey: nextCredihomeKey,
         credihomeApiUsername: nextCredihomeUsername,
         credihomeApiPassword: nextCredihomePassword,
+        credihomeApiUrl: nextCredihomeApiUrl,
         credihomePartnerCode: nextCredihomePartnerCode,
       };
 
@@ -1135,6 +1178,13 @@ export function AuthProvider({ children }: Props) {
         const stored = nextCredentials.find((item) => item.id === 'credihome-api-password')?.value;
         if (stored) {
           merged.credihomeApiPassword = stored;
+        }
+      }
+
+      if (!merged.credihomeApiUrl) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-api-url')?.value;
+        if (stored) {
+          merged.credihomeApiUrl = stored;
         }
       }
 

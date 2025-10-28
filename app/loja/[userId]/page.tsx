@@ -50,8 +50,10 @@ export default function PublicStorePage() {
       username: settings.credihomeApiUsername ?? undefined,
       password: settings.credihomeApiPassword ?? undefined,
       partnerCode: settings.credihomePartnerCode ?? undefined,
+      baseUrl: settings.credihomeApiUrl ?? undefined,
     }),
     [
+      settings.credihomeApiUrl,
       settings.credihomeApiKey,
       settings.credihomeApiUsername,
       settings.credihomeApiPassword,
