@@ -42,9 +42,16 @@ async function parseResponse<T>(response: Response): Promise<T> {
   }
 }
 
+type CredihomeRequestInit = Omit<RequestInit, "body" | "headers"> & {
+  includeAuth?: boolean;
+  includeChannel?: boolean;
+  headers?: HeadersInit;
+  body?: unknown;
+};
+
 async function request<T>(
   path: string,
-  init: RequestInit & { includeAuth?: boolean; includeChannel?: boolean } = {}
+  init: CredihomeRequestInit = {}
 ): Promise<T> {
   const { includeAuth = true, includeChannel = true, headers, body, ...rest } = init;
 
