@@ -1,0 +1,28 @@
+@base = https://api-partner.credihome.com.br/v1/production
+@login = contato@hiperban.com.br
+@password = Hiper4140
+@channel = 11629
+
+### 1) Login (pega o JWT)
+POST {{base}}/login
+Content-Type: application/json
+
+{
+  "login": "{{login}}",
+  "password": "{{password}}"
+}
+
+### 2) Simulação (cole o token abaixo após fazer o login)
+# @name simulador
+POST {{base}}/simulador
+Authorization: Bearer {{token}}
+Content-Type: application/json
+channel: {{channel}}
+
+{
+  "valorImovel": 400000,
+  "valorEntrada": 80000,
+  "valorFinanciamento": 320000,
+  "prazoPagamento": 360,
+  "sistema": "API"
+}
