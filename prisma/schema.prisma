@@ -1,0 +1,17 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+/*
+  >>> ORIENTAÇÃO PARA O CODEZ <<<
+  Sempre que criar/alterar tabelas, atualizar os modelos aqui
+  (ex.: model User {...}) E incluir uma migration em:
+  prisma/migrations/<timestamp>_<nome>/migration.sql
+  Não usar "prisma db push" em produção.
+*/
