@@ -590,8 +590,12 @@ const normalizeBilling = (billing?: UserBilling | null): UserBilling | undefined
     status = 'expired';
   }
 
+  if (status === 'pending' && expiresAt && expiresAt.getTime() < now.getTime()) {
+    status = 'overdue';
+  }
+
   if (status === 'overdue' && expiresAt && expiresAt.getTime() >= now.getTime()) {
-    status = 'active';
+    status = 'pending';
   }
 
   return {
@@ -1577,7 +1581,7 @@ export function AuthProvider({ children }: Props) {
             : !trialEndsAt
               ? addDays(now, plan.durationInDays).toISOString()
               : undefined;
-          const status: BillingStatus = billingStatus ?? (trialEndsAt ? 'trial' : 'active');
+          const status: BillingStatus = billingStatus ?? (trialEndsAt ? 'trial' : 'pending');
           billing = {
             planId: plan.id,
             planName: plan.name,
@@ -1857,6 +1861,15 @@ export function AuthProvider({ children }: Props) {
               : undefined;
 
           const currentHistory = user.billing?.history ?? [];
+          const previousStatus = user.billing?.status;
+          const derivedStatus: BillingStatus =
+            typeof status !== 'undefined'
+              ? status
+              : previousStatus
+                ? previousStatus
+                : trialEndsAt
+                  ? 'trial'
+                  : 'pending';
 
           const billing: UserBilling = {
             planId: plan.id,
@@ -1864,7 +1877,7 @@ export function AuthProvider({ children }: Props) {
             period: plan.period,
             price: plan.price,
             customPrice: customPrice ?? user.billing?.customPrice,
-            status: status ?? (trialEndsAt ? 'trial' : 'active'),
+            status: derivedStatus,
             seatsIncluded: seatsIncluded ?? plan.seatsIncluded,
             additionalSeats: additionalSeats ?? user.billing?.additionalSeats ?? 0,
             additionalSeatPrice: plan.additionalSeatPrice,
@@ -2083,7 +2096,7 @@ export function AuthProvider({ children }: Props) {
       if (!target) return false;
       if (target.role === 'admin') return false;
       const status = target.billing?.status;
-      return status === 'overdue' || status === 'expired' || status === 'cancelled';
+      return status === 'pending' || status === 'overdue' || status === 'expired' || status === 'cancelled';
     },
     [currentUser],
   );

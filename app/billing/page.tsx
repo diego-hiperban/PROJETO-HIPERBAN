@@ -13,9 +13,19 @@ const dateFormatter = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' });
 const STATUS_LABELS: Record<BillingStatus, string> = {
   active: 'Ativo',
   trial: 'Teste',
+  pending: 'Pagamento pendente',
   overdue: 'Em atraso',
   expired: 'Expirado',
   cancelled: 'Cancelado',
+};
+
+const STATUS_CLASSES: Record<BillingStatus, string> = {
+  active: 'bg-emerald-100 text-emerald-700',
+  trial: 'bg-sky-100 text-sky-700',
+  pending: 'bg-amber-100 text-amber-700',
+  overdue: 'bg-rose-100 text-rose-700',
+  expired: 'bg-rose-200 text-rose-700',
+  cancelled: 'bg-slate-200 text-slate-600',
 };
 
 function collectTeam(userId: string, users: User[]): User[] {
@@ -598,13 +608,7 @@ export default function BillingPage() {
                   </div>
                   {billing && (
                     <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                        billing.status === 'active'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : billing.status === 'trial'
-                            ? 'bg-sky-100 text-sky-700'
-                            : 'bg-rose-100 text-rose-700'
-                      }`}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${STATUS_CLASSES[billing.status]}`}
                     >
                       {STATUS_LABELS[billing.status]}
                     </span>
@@ -857,7 +861,7 @@ export default function BillingPage() {
                   disabled={syncing}
                   className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {syncing ? 'Sincronizando...' : 'Sincronizar com Asaas'}
+                  {syncing ? 'Atualizando...' : 'Atualizar pagamento'}
                 </button>
               )}
             </div>
