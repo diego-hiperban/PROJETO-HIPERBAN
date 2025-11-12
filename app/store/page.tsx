@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import { ProtectedPage } from '../components/ProtectedPage';
 import { Product } from '@/lib/data';
@@ -192,6 +193,26 @@ export default function StorePage() {
             Compartilhe ofertas com seus clientes, gere links rastreáveis e encaminhe oportunidades para a esteira.
           </p>
         </header>
+
+        <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50 p-6 shadow-sm">
+          <div className="flex flex-col gap-4 text-sm text-emerald-900 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Novidade</p>
+              <h2 className="mt-1 text-xl font-semibold text-emerald-900">Fichas do Consignado CLT</h2>
+              <p className="mt-1 max-w-2xl text-sm text-emerald-900/80">
+                Acesse a nova central de bancos parceiros e preencha rapidamente a ficha correspondente para iniciar a simulação
+                do cliente.
+              </p>
+            </div>
+            <Link
+              href="/store/consignado-clt"
+              className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+            >
+              Abrir fichas
+              <span className="ml-2 text-base">↗</span>
+            </Link>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {products.map((product) => (
