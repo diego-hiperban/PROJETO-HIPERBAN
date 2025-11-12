@@ -54,13 +54,13 @@ export type CredihomeProposalsResponse = {
   raw: unknown;
 };
 
-export const CREDIHOME_API_KEY_HEADER = 'x-credihome-api-key';
 export const CREDIHOME_USERNAME_HEADER = 'x-credihome-username';
 export const CREDIHOME_PASSWORD_HEADER = 'x-credihome-password';
 export const CREDIHOME_PARTNER_CODE_HEADER = 'x-credihome-partner-code';
 export const CREDIHOME_BASE_URL_HEADER = 'x-credihome-base-url';
 export const CREDIHOME_PROPOSALS_PATH_HEADER = 'x-credihome-proposals-path';
 export const CREDIHOME_SIMULATIONS_PATH_HEADER = 'x-credihome-simulations-path';
+export const CREDIHOME_API_KEY_HEADER = 'x-credihome-api-key';
 
 export type CredihomeCredentialInput = {
   apiKey?: string | null;
@@ -80,7 +80,7 @@ export class CredihomeError extends Error {
 }
 
 type CredihomeResolvedCredentials = {
-  apiKey: string;
+  apiKey?: string;
   username: string;
   password: string;
   partnerCode?: string;
@@ -403,13 +403,18 @@ export function readCredihomeCredentialHeaders(headers?: Headers | null): Credih
 function getCredihomeBaseUrl(context?: { baseUrl?: string | null }) {
   return (
     normalizeBaseUrl(context?.baseUrl) ??
+    normalizeBaseUrl(process.env.CREDIHOME_BASE_URL) ??
     normalizeBaseUrl(process.env.CREDIHOME_API_BASE_URL) ??
-    'https://api-partner.credihome.com.br'
+    'https://api-partner.credihome.com.br/v1/production'
   );
 }
 
 function getCredihomeAuthPath() {
-  return normalizePath(process.env.CREDIHOME_AUTH_PATH) ?? '/oauth/token';
+  return (
+    normalizePath(process.env.CREDIHOME_AUTH_PATH) ??
+    normalizePath(process.env.CREDIHOME_LOGIN_PATH) ??
+    '/login'
+  );
 }
 
 export function getCredihomeSimulationsPath(context?: { simulationsPath?: string | null }) {
@@ -417,30 +422,34 @@ export function getCredihomeSimulationsPath(context?: { simulationsPath?: string
 }
 
 export function getCredihomeProposalsPath(context?: { proposalsPath?: string | null }) {
-  return normalizePath(context?.proposalsPath) ?? normalizePath(process.env.CREDIHOME_PROPOSALS_PATH) ?? '/proposals';
+  return normalizePath(context?.proposalsPath) ?? normalizePath(process.env.CREDIHOME_PROPOSALS_PATH) ?? '/proposta';
 }
 
 function resolveCredihomeCredentials(input?: CredihomeCredentialInput): CredihomeResolvedCredentials {
-  const apiKey = normalizeCredentialValue(input?.apiKey) ?? normalizeCredentialValue(process.env.CREDIHOME_API_KEY);
-  if (!apiKey) {
-    throw new CredihomeError(
-      'Cadastre a chave de API da Credihome na aba Segurança ou defina a variável de ambiente CREDIHOME_API_KEY antes de usar a integração.',
-    );
-  }
-
   const username =
-    normalizeCredentialValue(input?.username) ?? normalizeCredentialValue(process.env.CREDIHOME_API_USERNAME);
+    normalizeCredentialValue(input?.username) ??
+    normalizeCredentialValue(process.env.CREDIHOME_API_USERNAME) ??
+    normalizeCredentialValue(process.env.CREDIHOME_LOGIN);
   const password =
-    normalizeCredentialValue(input?.password) ?? normalizeCredentialValue(process.env.CREDIHOME_API_PASSWORD);
+    normalizeCredentialValue(input?.password) ??
+    normalizeCredentialValue(process.env.CREDIHOME_API_PASSWORD) ??
+    normalizeCredentialValue(process.env.CREDIHOME_PASSWORD);
 
   if (!username || !password) {
     throw new CredihomeError(
-      'Informe usuário e senha da Credihome na aba Segurança ou defina CREDIHOME_API_USERNAME e CREDIHOME_API_PASSWORD.',
+      'Informe usuário e senha da Credihome na aba Segurança ou defina CREDIHOME_LOGIN e CREDIHOME_PASSWORD (ou as variáveis legadas CREDIHOME_API_USERNAME e CREDIHOME_API_PASSWORD).',
     );
   }
 
+  const apiKey =
+    normalizeCredentialValue(input?.apiKey) ??
+    normalizeCredentialValue(process.env.CREDIHOME_API_KEY) ??
+    normalizeCredentialValue(process.env.CREDIHOME_TOKEN);
+
   const partnerCode =
-    normalizeCredentialValue(input?.partnerCode) ?? normalizeCredentialValue(process.env.CREDIHOME_PARTNER_CODE);
+    normalizeCredentialValue(input?.partnerCode) ??
+    normalizeCredentialValue(process.env.CREDIHOME_PARTNER_CODE) ??
+    normalizeCredentialValue(process.env.CREDIHOME_CHANNEL);
 
   const baseUrl = getCredihomeBaseUrl({ baseUrl: input?.baseUrl });
   const authPath = getCredihomeAuthPath();
@@ -466,9 +475,13 @@ function resolveCredihomeCredentials(input?: CredihomeCredentialInput): Credihom
   } satisfies CredihomeResolvedCredentials;
 }
 
-async function requestCredihomeToken(credentials: CredihomeResolvedCredentials) {
-  const cacheKey = `${credentials.baseUrl}|${credentials.authPath}|${credentials.username}`;
-  const cached = credihomeTokenCache.get(cacheKey);
+function getTokenCacheKey(credentials: CredihomeResolvedCredentials) {
+  return `${credentials.baseUrl}|${credentials.authPath}|${credentials.username}`;
+}
+
+async function requestCredihomeToken(credentials: CredihomeResolvedCredentials, forceRefresh = false) {
+  const cacheKey = getTokenCacheKey(credentials);
+  const cached = forceRefresh ? undefined : credihomeTokenCache.get(cacheKey);
   const now = Date.now();
 
   if (cached && cached.expiresAt > now + 30_000) {
@@ -479,39 +492,23 @@ async function requestCredihomeToken(credentials: CredihomeResolvedCredentials) 
     ? credentials.authPath
     : `${credentials.baseUrl}${credentials.authPath.startsWith('/') ? credentials.authPath : `/${credentials.authPath}`}`;
 
-  const params = new URLSearchParams();
-  params.set('grant_type', process.env.CREDIHOME_AUTH_GRANT_TYPE ?? 'password');
-  params.set('username', credentials.username);
-  params.set('password', credentials.password);
-  if (credentials.clientId) {
-    params.set('client_id', credentials.clientId);
-  }
-  if (credentials.clientSecret) {
-    params.set('client_secret', credentials.clientSecret);
-  }
-  if (credentials.scope) {
-    params.set('scope', credentials.scope);
-  }
-
   const headers = new Headers({
-    'Content-Type': 'application/x-www-form-urlencoded',
+    'Content-Type': 'application/json',
     Accept: 'application/json',
-    'x-api-key': credentials.apiKey,
   });
 
-  if (credentials.clientId && credentials.clientSecret) {
-    const encoded = encodeToBase64(`${credentials.clientId}:${credentials.clientSecret}`);
-    if (encoded) {
-      headers.set('Authorization', `Basic ${encoded}`);
-    }
-  } else if (process.env.CREDIHOME_BASIC_AUTH) {
-    headers.set('Authorization', `Basic ${process.env.CREDIHOME_BASIC_AUTH}`);
+  if (credentials.apiKey) {
+    headers.set('x-api-key', credentials.apiKey);
+  }
+
+  if (credentials.partnerCode) {
+    headers.set('channel', credentials.partnerCode);
   }
 
   const response = await fetch(tokenUrl, {
     method: 'POST',
     headers,
-    body: params.toString(),
+    body: JSON.stringify({ login: credentials.username, password: credentials.password }),
   });
 
   const text = await response.text();
@@ -524,17 +521,23 @@ async function requestCredihomeToken(credentials: CredihomeResolvedCredentials) 
   }
 
   if (!response.ok) {
-    throw new CredihomeError(
-      `Falha ao gerar token na Credihome. Status ${response.status}.`,
-      parsed,
-    );
+    throw new CredihomeError(`Falha ao gerar token na Credihome. Status ${response.status}.`, {
+      status: response.status,
+      body: parsed,
+    });
   }
 
-  const token = parsed?.access_token;
-  const expiresIn = typeof parsed?.expires_in === 'number' ? parsed.expires_in : Number(parsed?.expires_in ?? 0);
+  const token = parsed?.token ?? parsed?.access_token;
+  const expiresInCandidate =
+    typeof parsed?.expiresIn === 'number'
+      ? parsed.expiresIn
+      : typeof parsed?.expires_in === 'number'
+        ? parsed.expires_in
+        : Number(parsed?.expiresIn ?? parsed?.expires_in ?? 0);
+  const expiresIn = Number.isFinite(expiresInCandidate) && expiresInCandidate > 0 ? expiresInCandidate : 600;
 
   if (!token) {
-    throw new CredihomeError('A resposta da Credihome não trouxe o access_token esperado.', parsed);
+    throw new CredihomeError('A resposta da Credihome não trouxe o token esperado.', parsed);
   }
 
   const expiresAt = now + Math.max(expiresIn * 1000, 5 * 60 * 1000);
@@ -552,32 +555,39 @@ export async function fetchCredihome<T = unknown>(
   options?: CredihomeFetchOptions,
 ): Promise<T> {
   const resolved = resolveCredihomeCredentials(options?.credentials);
-  const token = await requestCredihomeToken(resolved);
-
   const targetUrl = path.startsWith('http')
     ? path
     : `${resolved.baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+  const cacheKey = getTokenCacheKey(resolved);
 
-  const headers = new Headers(init?.headers ?? {});
-  headers.set('Accept', 'application/json');
-  headers.set('Authorization', `Bearer ${token}`);
-  headers.set('x-api-key', resolved.apiKey);
-  headers.set(CREDIHOME_API_KEY_HEADER, resolved.apiKey);
-  headers.set(CREDIHOME_USERNAME_HEADER, resolved.username);
-  headers.set(CREDIHOME_BASE_URL_HEADER, resolved.baseUrl);
-  headers.set(CREDIHOME_PROPOSALS_PATH_HEADER, resolved.proposalsPath);
-  headers.set(CREDIHOME_SIMULATIONS_PATH_HEADER, resolved.simulationsPath);
-  if (!headers.has('Content-Type') && init?.body) {
-    headers.set('Content-Type', 'application/json');
-  }
-  if (resolved.partnerCode) {
-    headers.set(CREDIHOME_PARTNER_CODE_HEADER, resolved.partnerCode);
-  }
+  const executeRequest = async (token: string) => {
+    const headers = new Headers(init?.headers ?? {});
+    headers.set('Accept', 'application/json');
+    headers.set('Authorization', `Bearer ${token}`);
+    if (resolved.apiKey && !headers.has('x-api-key')) {
+      headers.set('x-api-key', resolved.apiKey);
+    }
+    if (resolved.partnerCode && !headers.has('channel')) {
+      headers.set('channel', resolved.partnerCode);
+    }
+    if (!headers.has('Content-Type') && init?.body) {
+      headers.set('Content-Type', 'application/json');
+    }
 
-  const response = await fetch(targetUrl, {
-    ...init,
-    headers,
-  });
+    return fetch(targetUrl, {
+      ...init,
+      headers,
+    });
+  };
+
+  let token = await requestCredihomeToken(resolved);
+  let response = await executeRequest(token);
+
+  if (response.status === 401 || response.status === 403) {
+    credihomeTokenCache.delete(cacheKey);
+    token = await requestCredihomeToken(resolved, true);
+    response = await executeRequest(token);
+  }
 
   const text = await response.text();
   let parsed: unknown = null;
@@ -589,7 +599,10 @@ export async function fetchCredihome<T = unknown>(
   }
 
   if (!response.ok) {
-    throw new CredihomeError(`Erro ao consultar dados na Credihome. Status ${response.status}.`, parsed);
+    throw new CredihomeError(`Erro ao consultar dados na Credihome. Status ${response.status}.`, {
+      status: response.status,
+      body: parsed,
+    });
   }
 
   return parsed as T;

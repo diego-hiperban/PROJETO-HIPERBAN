@@ -46,7 +46,6 @@ export default function PublicStorePage() {
 
   const credihomeCredentials = useMemo(
     () => ({
-      apiKey: settings.credihomeApiKey ?? undefined,
       username: settings.credihomeApiUsername ?? undefined,
       password: settings.credihomeApiPassword ?? undefined,
       partnerCode: settings.credihomePartnerCode ?? undefined,
@@ -54,16 +53,13 @@ export default function PublicStorePage() {
     }),
     [
       settings.credihomeApiUrl,
-      settings.credihomeApiKey,
       settings.credihomeApiUsername,
       settings.credihomeApiPassword,
       settings.credihomePartnerCode,
     ],
   );
 
-  const hasCredihomeCredentials = Boolean(
-    credihomeCredentials.apiKey && credihomeCredentials.username && credihomeCredentials.password,
-  );
+  const hasCredihomeCredentials = Boolean(credihomeCredentials.username && credihomeCredentials.password);
 
   useEffect(() => {
     setSubmitError('');

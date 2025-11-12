@@ -76,17 +76,16 @@ O card **Crédito Imobiliário** da loja envia automaticamente os cadastros para
 
 | Variável | Obrigatória | Descrição |
 |----------|-------------|-----------|
-| `CREDIHOME_API_KEY` | Sim | Token fornecido pela Credihome. Informe-o na aba **Segurança** (para registrar a credencial) e como variável de ambiente para que os servidores consigam autenticar as requisições. |
-| `CREDIHOME_API_USERNAME` | Sim | Usuário utilizado para gerar o token OAuth na Credihome. |
-| `CREDIHOME_API_PASSWORD` | Sim | Senha utilizada na geração do token OAuth. |
-| `CREDIHOME_API_BASE_URL` | Não | URL base da API. Padrão: `https://api-partner.credihome.com.br`. |
-| `CREDIHOME_PARTNER_CODE` | Não | Código de parceiro/canal enviado no campo `channel`. Útil para rastrear origens. |
+| `CREDIHOME_BASE_URL` | Não | URL base da API. Padrão: `https://api-partner.credihome.com.br/v1/production`. |
+| `CREDIHOME_LOGIN` | Sim | Login utilizado no endpoint `POST /login` para gerar o token JWT. |
+| `CREDIHOME_PASSWORD` | Sim | Senha correspondente ao login acima. |
+| `CREDIHOME_CHANNEL` | Não | Código de parceiro/canal enviado no header `channel`. Útil para rastrear origens. |
 
 > Caso a API exija campos adicionais, ajuste os formulários em `/app/store/page.tsx` e `/app/loja/[userId]/page.tsx`. A integração atual cobre nome, CPF, contato e dados básicos do imóvel e permite acompanhar o pipeline por protocolo, CPF ou e-mail.
 
 > As credenciais cadastradas em **Segurança → Credenciais Credihome** são anexadas automaticamente aos requests da simulação e da consulta de propostas, evitando falhas de autenticação durante os testes locais.
 
-> A aba **Segurança** concentra o cadastro da chave, usuário, senha, código de parceiro e URL base para facilitar os testes locais. Se for necessário personalizar caminhos, escopos ou parâmetros adicionais, defina-os diretamente nas variáveis de ambiente citadas na documentação da Credihome.
+> A aba **Segurança** concentra o cadastro da URL base, login, senha e código de parceiro para facilitar os testes locais. Se for necessário personalizar caminhos, escopos ou parâmetros adicionais, defina-os diretamente nas variáveis de ambiente citadas na documentação da Credihome.
 
 ## Gestão de planos e integração Asaas
 

@@ -34,7 +34,6 @@ export default function SecurityPage() {
   const [credihomeFeedback, setCredihomeFeedback] = useState('');
   const [credihomeForm, setCredihomeForm] = useState({
     apiUrl: settings.credihomeApiUrl ?? '',
-    apiKey: settings.credihomeApiKey ?? '',
     username: settings.credihomeApiUsername ?? '',
     password: settings.credihomeApiPassword ?? '',
     partnerCode: settings.credihomePartnerCode ?? '',
@@ -63,7 +62,6 @@ export default function SecurityPage() {
   useEffect(() => {
     setCredihomeForm({
       apiUrl: settings.credihomeApiUrl ?? '',
-      apiKey: settings.credihomeApiKey ?? '',
       username: settings.credihomeApiUsername ?? '',
       password: settings.credihomeApiPassword ?? '',
       partnerCode: settings.credihomePartnerCode ?? '',
@@ -71,7 +69,6 @@ export default function SecurityPage() {
     setCredihomeFeedback('');
   }, [
     settings.credihomeApiUrl,
-    settings.credihomeApiKey,
     settings.credihomeApiUsername,
     settings.credihomeApiPassword,
     settings.credihomePartnerCode,
@@ -149,14 +146,12 @@ export default function SecurityPage() {
   const handleCredihomeSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalizedUrl = credihomeForm.apiUrl.trim();
-    const normalizedKey = credihomeForm.apiKey.trim();
     const normalizedUsername = credihomeForm.username.trim();
     const normalizedPassword = credihomeForm.password.trim();
     const normalizedPartnerCode = credihomeForm.partnerCode.trim();
 
     updateSettings({
       credihomeApiUrl: normalizedUrl || undefined,
-      credihomeApiKey: normalizedKey || undefined,
       credihomeApiUsername: normalizedUsername || undefined,
       credihomeApiPassword: normalizedPassword || undefined,
       credihomePartnerCode: normalizedPartnerCode || undefined,
@@ -164,7 +159,6 @@ export default function SecurityPage() {
 
     const hasCredihomeValues =
       Boolean(normalizedUrl) ||
-      Boolean(normalizedKey) ||
       Boolean(normalizedUsername) ||
       Boolean(normalizedPassword) ||
       Boolean(normalizedPartnerCode);
@@ -177,14 +171,12 @@ export default function SecurityPage() {
   const handleClearCredihome = () => {
     setCredihomeForm({
       apiUrl: '',
-      apiKey: '',
       username: '',
       password: '',
       partnerCode: '',
     });
     updateSettings({
       credihomeApiUrl: undefined,
-      credihomeApiKey: undefined,
       credihomeApiUsername: undefined,
       credihomeApiPassword: undefined,
       credihomePartnerCode: undefined,
@@ -369,22 +361,7 @@ export default function SecurityPage() {
               </span>
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Chave de API*
-              <input
-                type="password"
-                name="apiKey"
-                value={credihomeForm.apiKey}
-                onChange={handleCredihomeChange}
-                required={!settings.credihomeApiKey}
-                placeholder="ch_prod_xxx"
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              />
-              <span className="text-xs font-normal text-slate-500">
-                Informe o token fornecido pela Credihome. Ele será utilizado junto do OAuth nas requisições do Crédito Imobiliário.
-              </span>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Usuário*
+              Login (e-mail)*
               <input
                 name="username"
                 value={credihomeForm.username}
@@ -393,7 +370,9 @@ export default function SecurityPage() {
                 placeholder="contato@empresa.com"
                 className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
               />
-              <span className="text-xs font-normal text-slate-500">Mesmo login utilizado para gerar o token no endpoint <code className="rounded bg-slate-100 px-1">/oauth/token</code>.</span>
+              <span className="text-xs font-normal text-slate-500">
+                Mesmo login utilizado no endpoint <code className="rounded bg-slate-100 px-1">/login</code> para gerar o token JWT.
+              </span>
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
               Senha*
@@ -441,7 +420,7 @@ export default function SecurityPage() {
           </form>
 
           <p className="text-xs text-slate-500">
-            Além de registrar aqui para fins de governança, lembre-se de definir as variáveis de ambiente <code className="rounded bg-slate-100 px-1">CREDIHOME_API_KEY</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_USERNAME</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_PASSWORD</code> e, se necessário, <code className="rounded bg-slate-100 px-1">CREDIHOME_API_BASE_URL</code> e <code className="rounded bg-slate-100 px-1">CREDIHOME_PARTNER_CODE</code> no servidor para que a integração funcione em produção.
+            Além de registrar aqui para fins de governança, lembre-se de definir as variáveis de ambiente <code className="rounded bg-slate-100 px-1">CREDIHOME_BASE_URL</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_LOGIN</code>, <code className="rounded bg-slate-100 px-1">CREDIHOME_PASSWORD</code> e, se necessário, <code className="rounded bg-slate-100 px-1">CREDIHOME_CHANNEL</code> no servidor para que a integração funcione em produção.
           </p>
         </article>
 
