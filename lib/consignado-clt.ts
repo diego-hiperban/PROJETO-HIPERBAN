@@ -36,4 +36,25 @@ export const consignadoCltBanks: ConsignadoCltBank[] = [
     link: 'https://hiperban.com.br/fichas/facta',
     tags: ['Convênios', 'Especialista consignado'],
   },
+  {
+    id: 'ole-consignado',
+    name: 'Olé Consignado',
+    description: 'Crédito consignado com assinatura eletrônica e aprovação simplificada.',
+    link: 'https://hiperban.com.br/fichas/ole-consignado',
+    tags: ['Assinatura eletrônica', 'Atendimento rápido'],
+  },
+  {
+    id: 'bmg',
+    name: 'Banco BMG',
+    description: 'Produtos consignados com opção de cartão benefício e flexibilidade de pagamento.',
+    link: 'https://hiperban.com.br/fichas/banco-bmg',
+    tags: ['Cartão benefício', 'Flexibilidade'],
+  },
+  {
+    id: 'daycoval',
+    name: 'Banco Daycoval',
+    description: 'Operação consignada focada em empresas privadas com análise personalizada.',
+    link: 'https://hiperban.com.br/fichas/banco-daycoval',
+    tags: ['Atendimento consultivo', 'Análise personalizada'],
+  },
 ];

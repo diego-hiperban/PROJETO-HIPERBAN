@@ -24,7 +24,7 @@ function getInitials(name: string) {
 }
 
 export default function ConsignadoCltBanksPage() {
-  const banks = consignadoCltBanks;
+  const banks = [...consignadoCltBanks].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <ProtectedPage>
