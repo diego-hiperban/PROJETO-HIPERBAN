@@ -116,6 +116,11 @@ interface AuthContextValue {
   ) => void;
   updateUserBilling: (userId: string, data: Partial<UserBilling>) => void;
   recordPayment: (userId: string, payment: PaymentRecord, nextStatus?: BillingStatus) => void;
+  removePaymentRecord: (
+    userId: string,
+    paymentId: string,
+    options?: { clearCheckout?: boolean; statusOverride?: BillingStatus },
+  ) => void;
   requestCheckout: (params: CheckoutRequest) => Promise<CheckoutResponse>;
   getPlanById: (planId: string) => Plan | undefined;
   isBillingRestricted: (user?: User | null) => boolean;
@@ -251,6 +256,56 @@ const cleanDocument = (value?: string | null) => {
   if (!value) return undefined;
   const numeric = value.replace(/\D+/g, '');
   return numeric.length > 0 ? numeric : undefined;
+};
+
+const isValidDate = (value?: string) => {
+  if (!value) return false;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime());
+};
+
+const sortPaymentsByDateDesc = (records: PaymentRecord[]): PaymentRecord[] =>
+  records
+    .slice()
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+const determineBillingStatus = ({
+  history,
+  previousStatus,
+  trialEndsAt,
+  override,
+}: {
+  history: PaymentRecord[];
+  previousStatus?: BillingStatus;
+  trialEndsAt?: string;
+  override?: BillingStatus;
+}): BillingStatus => {
+  if (override) {
+    return override;
+  }
+
+  const hasPaid = history.some((entry) => entry.status === 'paid');
+  if (hasPaid) {
+    return 'active';
+  }
+
+  if (previousStatus === 'cancelled' || previousStatus === 'expired') {
+    return previousStatus;
+  }
+
+  const hasOverdue = history.some((entry) => entry.status === 'overdue');
+  if (hasOverdue) {
+    return 'overdue';
+  }
+
+  if (trialEndsAt && isValidDate(trialEndsAt)) {
+    const trialDate = new Date(trialEndsAt);
+    if (trialDate.getTime() > Date.now()) {
+      return 'trial';
+    }
+  }
+
+  return 'pending';
 };
 
 const isValidCPF = (value: string): boolean => {
@@ -1967,20 +2022,35 @@ export function AuthProvider({ children }: Props) {
             dueDate: dueDate ? dueDate.toISOString() : payment.dueDate,
           };
 
-          const history = [normalizedRecord]
-            .concat(
-              (user.billing.history ?? []).filter(
-                (entry) => (entry.asaasPaymentId ?? entry.id) !== (payment.asaasPaymentId ?? payment.id),
-              ),
-            )
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          const history = [normalizedRecord].concat(
+            (user.billing.history ?? []).filter(
+              (entry) => (entry.asaasPaymentId ?? entry.id) !== (payment.asaasPaymentId ?? payment.id),
+            ),
+          );
+
+          const sortedHistory = sortPaymentsByDateDesc(history);
+          const lastPaid = sortedHistory.find((entry) => entry.status === 'paid');
+          const overrideStatus = nextStatus ?? (isPaid ? 'active' : isOverdue ? 'overdue' : undefined);
+          const status = determineBillingStatus({
+            history: sortedHistory,
+            previousStatus: user.billing.status,
+            trialEndsAt: user.billing.trialEndsAt,
+            override: overrideStatus,
+          });
+
+          let expiresAt = user.billing.expiresAt;
+          if (isPaid) {
+            expiresAt = nextExpiresAt;
+          } else if (!lastPaid) {
+            expiresAt = status === 'trial' ? user.billing.expiresAt : undefined;
+          }
 
           const billing: UserBilling = {
             ...user.billing,
-            history,
-            lastPaymentAt: isPaid ? normalizedRecord.date : user.billing.lastPaymentAt,
-            status: nextStatus ?? (isPaid ? 'active' : isOverdue ? 'overdue' : user.billing.status),
-            expiresAt: nextExpiresAt,
+            history: sortedHistory,
+            lastPaymentAt: lastPaid?.date,
+            status,
+            expiresAt,
             checkoutUrl: isPaid ? undefined : user.billing.checkoutUrl,
           };
 
@@ -1989,6 +2059,51 @@ export function AuthProvider({ children }: Props) {
       );
     },
     [plansState, updateUsers],
+  );
+
+  const removePaymentRecord = useCallback(
+    (
+      userId: string,
+      paymentId: string,
+      { clearCheckout = false, statusOverride }: { clearCheckout?: boolean; statusOverride?: BillingStatus } = {},
+    ) => {
+      updateUsers((previous) =>
+        previous.map((user) => {
+          if (user.id !== userId || !user.billing) {
+            return user;
+          }
+
+          const filtered = (user.billing.history ?? []).filter(
+            (entry) => (entry.asaasPaymentId ?? entry.id) !== paymentId,
+          );
+          const sortedHistory = sortPaymentsByDateDesc(filtered);
+          const lastPaid = sortedHistory.find((entry) => entry.status === 'paid');
+          const status = determineBillingStatus({
+            history: sortedHistory,
+            previousStatus: user.billing.status,
+            trialEndsAt: user.billing.trialEndsAt,
+            override: statusOverride,
+          });
+
+          let expiresAt = user.billing.expiresAt;
+          if (!lastPaid) {
+            expiresAt = status === 'trial' ? user.billing.expiresAt : undefined;
+          }
+
+          const billing: UserBilling = {
+            ...user.billing,
+            history: sortedHistory,
+            lastPaymentAt: lastPaid?.date,
+            status,
+            expiresAt,
+            checkoutUrl: clearCheckout ? undefined : user.billing.checkoutUrl,
+          };
+
+          return { ...user, billing };
+        }),
+      );
+    },
+    [updateUsers],
   );
 
   const requestCheckout = useCallback(
@@ -2078,6 +2193,42 @@ export function AuthProvider({ children }: Props) {
           }
         }
 
+        if (responseBody.paymentId) {
+          let pendingAmount: number | undefined;
+          let description: string | undefined;
+
+          if (params.type === 'plan') {
+            const targetPlan = plansState.find((item) => item.id === params.planId);
+            pendingAmount =
+              typeof params.customPrice === 'number'
+                ? params.customPrice
+                : targetPlan?.price ?? undefined;
+            description = targetPlan?.name
+              ? `Assinatura ${targetPlan.name}`
+              : 'Cobrança de assinatura Asaas';
+          } else if (params.type === 'seat') {
+            const seats = typeof params.quantity === 'number' ? params.quantity : 0;
+            pendingAmount = seats > 0 ? params.seatPrice * seats : undefined;
+            description = seats > 0 ? `Usuários adicionais (${seats})` : 'Cobrança de usuários adicionais';
+          }
+
+          if (typeof pendingAmount === 'number' && pendingAmount > 0) {
+            recordPayment(
+              params.userId,
+              {
+                id: responseBody.paymentId,
+                asaasPaymentId: responseBody.paymentId,
+                amount: pendingAmount,
+                date: new Date().toISOString(),
+                status: 'pending',
+                description: description ?? 'Cobrança registrada no Asaas',
+                method: 'Asaas',
+              },
+              'pending',
+            );
+          }
+        }
+
         return responseBody;
       } catch (error) {
         console.error('Erro ao solicitar checkout', error);
@@ -2145,6 +2296,7 @@ export function AuthProvider({ children }: Props) {
       getRemainingTrialDays,
       updateSettings,
       updateTenantBranding,
+      removePaymentRecord,
     }),
     [
       currentUser,
@@ -2174,6 +2326,7 @@ export function AuthProvider({ children }: Props) {
       assignPlanToUser,
       updateUserBilling,
       recordPayment,
+      removePaymentRecord,
       requestCheckout,
       getPlanById,
       isBillingRestricted,

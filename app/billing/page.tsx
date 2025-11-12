@@ -47,6 +47,7 @@ export default function BillingPage() {
     createPlan,
     updatePlan,
     recordPayment,
+    removePaymentRecord,
   } = useAuth();
   const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(currentUser?.billing?.planId);
   const [customPrice, setCustomPrice] = useState<string>('');
@@ -60,6 +61,7 @@ export default function BillingPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'plans'>('overview');
   const [syncing, setSyncing] = useState(false);
   const [highlightSeats, setHighlightSeats] = useState(false);
+  const [cancellingPaymentId, setCancellingPaymentId] = useState<string | null>(null);
   const router = useRouter();
   const [focusParam, setFocusParam] = useState<string | null>(null);
   const seatFocusHandledRef = useRef(false);
@@ -433,6 +435,19 @@ export default function BillingPage() {
           inserted += 1;
         });
 
+        const removable = (billing.history ?? []).filter((entry) => {
+          const identifier = entry.asaasPaymentId ?? entry.id;
+          if (!identifier) return false;
+          if (entry.status === 'paid') return false;
+          return !processedIds.has(identifier);
+        });
+
+        removable.forEach((entry) => {
+          removePaymentRecord(currentUser.id, entry.asaasPaymentId ?? entry.id, {
+            clearCheckout: entry.status === 'pending' && Boolean(billing.checkoutUrl),
+          });
+        });
+
         if (!silent) {
           if (inserted === 0) {
             setFeedback('Pagamentos já registrados anteriormente. Nenhuma novidade encontrada.');
@@ -458,6 +473,84 @@ export default function BillingPage() {
       billing,
       currentUser.id,
       recordPayment,
+      removePaymentRecord,
+      settings.asaasApiKey,
+      settings.asaasApiUrl,
+    ],
+  );
+
+  const handleCancelPayment = useCallback(
+    async (payment: PaymentRecord) => {
+      const identifier = payment.asaasPaymentId ?? payment.id;
+      if (!identifier) {
+        setFeedback('Não foi possível identificar a cobrança selecionada.');
+        return;
+      }
+
+      setFeedback('');
+
+      if (!settings.asaasApiKey || !payment.asaasPaymentId) {
+        removePaymentRecord(currentUser.id, identifier, {
+          clearCheckout: payment.status === 'pending' && Boolean(billing?.checkoutUrl),
+        });
+        if (payment.status === 'pending') {
+          setShowCheckout(false);
+          setPendingCheckoutUrl(null);
+          setAutoOpenBlocked(false);
+        }
+        const message = !settings.asaasApiKey
+          ? 'Cobrança removida localmente. Configure a chave do Asaas para cancelar direto na plataforma.'
+          : 'Cobrança removida localmente. O identificador da cobrança não está disponível para sincronizar com o Asaas.';
+        setFeedback(message);
+        return;
+      }
+
+      setCancellingPaymentId(identifier);
+      try {
+        const response = await fetch(`/api/asaas/payments/${encodeURIComponent(identifier)}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey: settings.asaasApiKey,
+            apiUrl: settings.asaasApiUrl,
+          }),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          setFeedback(
+            payload?.error || 'Não foi possível excluir a cobrança. Verifique as credenciais e tente novamente.',
+          );
+          return;
+        }
+
+        removePaymentRecord(currentUser.id, identifier, {
+          clearCheckout: payment.status === 'pending' && Boolean(billing?.checkoutUrl),
+        });
+
+        if (payment.status === 'pending') {
+          setShowCheckout(false);
+          setPendingCheckoutUrl(null);
+          setAutoOpenBlocked(false);
+        }
+
+        setFeedback(
+          payload?.status === 'missing'
+            ? 'Cobrança já estava ausente no Asaas. Registro removido do sistema.'
+            : 'Cobrança excluída com sucesso.',
+        );
+      } catch (error) {
+        console.error('Erro ao cancelar cobrança', error);
+        setFeedback('Não foi possível cancelar a cobrança no momento.');
+      } finally {
+        setCancellingPaymentId(null);
+      }
+    },
+    [
+      billing?.checkoutUrl,
+      currentUser.id,
+      removePaymentRecord,
       settings.asaasApiKey,
       settings.asaasApiUrl,
     ],
@@ -869,32 +962,50 @@ export default function BillingPage() {
 
           {billing?.history && billing.history.length > 0 ? (
             <ul className="divide-y divide-slate-200 text-sm">
-              {billing.history.map((payment) => (
-                <li key={payment.id} className="flex flex-wrap items-center justify-between gap-4 py-3">
-                  <div>
-                    <p className="font-medium text-slate-900">{payment.description}</p>
-                    <p className="text-xs text-slate-500">{dateFormatter.format(new Date(payment.date))}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-slate-900">{currency.format(payment.amount)}</p>
-                    <p
-                      className={`text-xs font-semibold uppercase tracking-wide ${
-                        payment.status === 'paid'
-                          ? 'text-emerald-600'
-                          : payment.status === 'pending'
-                            ? 'text-sky-600'
-                            : 'text-rose-600'
-                      }`}
-                    >
-                      {payment.status === 'paid'
-                        ? 'Pago'
-                        : payment.status === 'pending'
-                          ? 'Pendente'
-                          : 'Vencido'}
-                    </p>
-                  </div>
-                </li>
-              ))}
+              {billing.history.map((payment) => {
+                const identifier = payment.asaasPaymentId ?? payment.id;
+                const isCancelling = cancellingPaymentId === identifier;
+                const canCancel = payment.status !== 'paid';
+
+                return (
+                  <li key={payment.id} className="flex flex-wrap items-center justify-between gap-4 py-3">
+                    <div>
+                      <p className="font-medium text-slate-900">{payment.description}</p>
+                      <p className="text-xs text-slate-500">{dateFormatter.format(new Date(payment.date))}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-end gap-3 text-right">
+                      <div className="text-right">
+                        <p className="font-semibold text-slate-900">{currency.format(payment.amount)}</p>
+                        <p
+                          className={`text-xs font-semibold uppercase tracking-wide ${
+                            payment.status === 'paid'
+                              ? 'text-emerald-600'
+                              : payment.status === 'pending'
+                                ? 'text-sky-600'
+                                : 'text-rose-600'
+                          }`}
+                        >
+                          {payment.status === 'paid'
+                            ? 'Pago'
+                            : payment.status === 'pending'
+                              ? 'Pendente'
+                              : 'Vencido'}
+                        </p>
+                      </div>
+                      {canCancel && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelPayment(payment)}
+                          disabled={isCancelling}
+                          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isCancelling ? 'Excluindo...' : 'Excluir cobrança'}
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="text-sm text-slate-600">Ainda não há pagamentos registrados para este usuário.</p>
