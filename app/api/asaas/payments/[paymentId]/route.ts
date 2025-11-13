@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   DEFAULT_ASAAS_BASE_URL,
   AsaasError,
@@ -8,11 +8,11 @@ import {
 } from '@/lib/server/asaas';
 
 export async function DELETE(
-  request: NextRequest,
-  context: { params: { paymentId: string } },
+  request: Request,
+  { params }: { params: { paymentId: string } },
 ) {
   try {
-    const paymentId = context?.params?.paymentId;
+    const paymentId = params?.paymentId;
     if (!paymentId) {
       return NextResponse.json({ error: 'Informe o identificador da cobrança.' }, { status: 400 });
     }
