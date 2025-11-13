@@ -7,12 +7,11 @@ import {
   readAsaasResponse,
 } from '@/lib/server/asaas';
 
-export async function DELETE(
-  request: NextRequest,
-  context: { params: { paymentId: string } | undefined } | undefined,
-) {
+type RouteContext = { params: { paymentId: string } };
+
+export async function DELETE(request: NextRequest, { params }: RouteContext) {
   try {
-    const paymentId = context?.params?.paymentId;
+    const paymentId = params?.paymentId;
     if (!paymentId) {
       return NextResponse.json({ error: 'Informe o identificador da cobrança.' }, { status: 400 });
     }
