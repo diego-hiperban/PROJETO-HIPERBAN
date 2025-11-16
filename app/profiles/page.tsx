@@ -3,7 +3,7 @@
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { ProtectedPage } from '../components/ProtectedPage';
 import { useAuth } from '../context/AuthContext';
-import { Role } from '@/lib/data';
+import { Role } from '@/lib/platform-data';
 
 const ROLE_SUMMARY: Record<Role, string[]> = {
   admin: [

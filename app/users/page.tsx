@@ -4,7 +4,7 @@ import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } fro
 import { useRouter } from 'next/navigation';
 import { ProtectedPage } from '../components/ProtectedPage';
 import { useAuth } from '../context/AuthContext';
-import { BillingStatus, Plan, Role, UserStatus } from '@/lib/data';
+import { BillingStatus, Plan, Role, UserStatus } from '@/lib/platform-data';
 
 const STATUS_LABELS: Record<UserStatus, string> = {
   active: 'Ativo',

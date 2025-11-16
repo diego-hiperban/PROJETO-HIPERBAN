@@ -18,7 +18,7 @@ import {
   profiles as seedProfiles,
   storeBaseUrl,
   users as seedUsers,
-} from '@/lib/data';
+} from '@/lib/platform-data';
 import { readValue, writeValue } from '@/lib/persistence';
 import {
   DEFAULT_TENANT_PALETTE,

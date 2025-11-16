@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useAuth } from '../context/AuthContext';
 import { ProtectedPage } from '../components/ProtectedPage';
-import { Product } from '@/lib/data';
+import { Product } from '@/lib/platform-data';
 import {
   CredihomeError,
   CredihomeProposalSummary,

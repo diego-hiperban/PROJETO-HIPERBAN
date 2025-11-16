@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ProtectedPage } from '../components/ProtectedPage';
 import { useAuth } from '../context/AuthContext';
-import { BillingStatus, Plan, PaymentRecord, User } from '@/lib/data';
+import { BillingStatus, Plan, PaymentRecord, User } from '@/lib/platform-data';
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' });

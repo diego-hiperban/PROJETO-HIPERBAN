@@ -3,7 +3,7 @@ export type UserStatus = 'active' | 'inactive';
 
 export type BillingPeriod = 'monthly' | 'quarterly' | 'semiannual' | 'annual';
 
-export type BillingStatus = 'trial' | 'pending' | 'active' | 'overdue' | 'expired' | 'cancelled';
+export type BillingStatus = 'trial' | 'active' | 'overdue' | 'expired' | 'cancelled';
 
 export interface PaymentRecord {
   id: string;
