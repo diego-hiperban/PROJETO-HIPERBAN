@@ -778,29 +778,33 @@ export function AuthProvider({ children }: Props) {
           setCurrentUser(normalizeUser(storedUser));
         }
 
-        if (storedOrders && storedOrders.length > 0) {
-          setOrders(storedOrders.map((order) => ({ ...order, customerDocument: order.customerDocument ?? '' })));
+        const normalizedOrders = storedOrders?.map((order) => ({
+          ...order,
+          customerDocument: order.customerDocument ?? '',
+        }));
+        if (normalizedOrders) {
+          setOrders(normalizedOrders);
         }
 
-        if (storedUsers && storedUsers.length > 0) {
-          const normalized = storedUsers.map(normalizeUser);
-          setUsersState(normalized);
+        const normalizedUsers = storedUsers?.map(normalizeUser);
+        if (normalizedUsers) {
+          setUsersState(normalizedUsers);
           setCurrentUser((prev) => {
             if (!prev) return prev;
-            const updated = normalized.find((user) => user.id === prev.id);
+            const updated = normalizedUsers.find((user) => user.id === prev.id);
             return updated ?? prev;
           });
         }
 
-        if (storedProfiles && storedProfiles.length > 0) {
+        if (storedProfiles) {
           setProfilesState(storedProfiles);
         }
 
-        if (storedProducts && storedProducts.length > 0) {
+        if (storedProducts) {
           setProductsState(mergeProductsWithSeeds(storedProducts, seedProducts));
         }
 
-        if (storedPlans && storedPlans.length > 0) {
+        if (storedPlans) {
           setPlansState(mergePlansWithSeeds(storedPlans, seedPlans));
         }
 
