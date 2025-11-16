@@ -7,8 +7,8 @@ import type {
   Product,
   ProductIntegration,
   Role,
-  User,
-  UserBilling,
+  User as SeedUser,
+  UserBilling as SeedUserBilling,
   UserProfile,
   UserStatus,
 } from '@/lib/data';
@@ -22,6 +22,14 @@ import {
 
 export type BillingStatus = SeedBillingStatus | 'pending';
 
+export type UserBilling = Omit<SeedUserBilling, 'status'> & {
+  status: BillingStatus;
+};
+
+export type User = Omit<SeedUser, 'billing'> & {
+  billing?: UserBilling | null;
+};
+
 export type {
   BillingPeriod,
   Order,
@@ -30,8 +38,6 @@ export type {
   Product,
   ProductIntegration,
   Role,
-  User,
-  UserBilling,
   UserProfile,
   UserStatus,
 };
@@ -39,5 +45,5 @@ export type {
 export const plans = basePlans;
 export const products = baseProducts;
 export const profiles = baseProfiles;
-export const users = baseUsers;
+export const users = baseUsers as unknown as User[];
 export { storeBaseUrl };
