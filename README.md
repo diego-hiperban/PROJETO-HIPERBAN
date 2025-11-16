@@ -69,6 +69,7 @@ A forma mais simples de disponibilizar esta aplicação na web é pela [Vercel](
 - Personalizar o domínio da loja e o link de compartilhamento (`storeBaseUrl` em `lib/data.ts`).
 - Conectar um encurtador ou ferramenta de afiliados para os links individuais de produtos.
 - Adicionar testes automatizados e monitoramento em produção.
+- Sempre que uma feature exigir novas tabelas ou colunas, atualize o `prisma/schema.prisma` **e** versione a migration em `prisma/migrations/` para que os dados sejam preservados nos deploys.
 
 ## Integração Credihome
 
