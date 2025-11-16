@@ -24,6 +24,59 @@ type EnsureCustomerInput = {
   };
 };
 
+const REMOVED_CUSTOMER_KEYWORDS = ['cliente removido', 'cliente foi removido', 'customer removed'];
+
+const includesRemovedKeyword = (value?: string | null) => {
+  if (!value) return false;
+  const normalized = value.toLowerCase();
+  return REMOVED_CUSTOMER_KEYWORDS.some((keyword) => normalized.includes(keyword));
+};
+
+const isRemovedCustomerPayload = (payload: any) => {
+  if (!payload) return false;
+  if (payload?.deleted === true) return true;
+  const status = typeof payload?.status === 'string' ? payload.status.toLowerCase() : '';
+  if (status.includes('removed') || status.includes('deleted')) {
+    return true;
+  }
+  const situacao = typeof payload?.situacao === 'string' ? payload.situacao.toLowerCase() : '';
+  if (situacao.includes('remov') || situacao.includes('inativo')) {
+    return true;
+  }
+  const description =
+    typeof payload?.description === 'string'
+      ? payload.description
+      : typeof payload?.message === 'string'
+        ? payload.message
+        : undefined;
+  return includesRemovedKeyword(description ?? undefined);
+};
+
+const isRemovedCustomerError = (payload: any): boolean => {
+  if (!payload) return false;
+  if (typeof payload === 'string') {
+    return includesRemovedKeyword(payload);
+  }
+
+  const candidates: (string | undefined)[] = [];
+  if (typeof payload?.message === 'string') candidates.push(payload.message);
+  if (typeof payload?.error === 'string') candidates.push(payload.error);
+  if (typeof payload?.description === 'string') candidates.push(payload.description);
+
+  if (Array.isArray(payload?.errors)) {
+    for (const entry of payload.errors) {
+      if (typeof entry?.description === 'string') {
+        candidates.push(entry.description);
+      }
+      if (typeof entry?.message === 'string') {
+        candidates.push(entry.message);
+      }
+    }
+  }
+
+  return candidates.some((candidate) => includesRemovedKeyword(candidate));
+};
+
 const extractCustomerFromPayload = (payload: any) => {
   if (!payload) return undefined;
   if (Array.isArray(payload) && payload.length > 0) return payload[0];
@@ -37,11 +90,18 @@ async function ensureCustomer({
   customer,
   apiKey,
   baseUrl,
-}: EnsureCustomerInput & { apiKey: string; baseUrl: string }) {
-  if (customerId) {
+  forceCreate = false,
+}: EnsureCustomerInput & { apiKey: string; baseUrl: string; forceCreate?: boolean }) {
+  if (customerId && !forceCreate) {
     const lookup = await asaasFetch(`/customers/${customerId}`, { method: 'GET' }, apiKey, baseUrl);
-    if (lookup.ok) {
-      return lookup.json();
+    const { json: lookupBody } = await readAsaasResponse(lookup);
+
+    if (lookup.ok && lookupBody && !isRemovedCustomerPayload(lookupBody)) {
+      return lookupBody;
+    }
+
+    if (lookup.ok && lookupBody && isRemovedCustomerPayload(lookupBody)) {
+      console.warn('Cliente do Asaas encontrado porém removido. Novo cadastro será solicitado.', lookupBody?.id);
     }
   }
 
@@ -115,7 +175,7 @@ async function ensureCustomer({
       }
 
       const found = extractCustomerFromPayload(searchBody);
-      if (found) {
+      if (found && !isRemovedCustomerPayload(found)) {
         return found;
       }
     }
@@ -356,6 +416,7 @@ export async function POST(request: NextRequest) {
     }
 
     const asaasCustomer = await ensureCustomer({ customerId, customer, apiKey, baseUrl: sanitizedBaseUrl });
+    let resolvedCustomer = asaasCustomer;
     const cycle = cycleMap[period ?? 'monthly'] ?? 'MONTHLY';
     const now = new Date();
     const dueDate = new Date(now);
@@ -371,27 +432,46 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const subscriptionResponse = await asaasFetch(
-        '/subscriptions',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            customer: asaasCustomer.id,
-            billingType: 'UNDEFINED',
-            value,
-            cycle,
-            description: planName ?? `Plano ${planId}`,
-            maxPayments: undefined,
-            endDate: durationInDays
-              ? new Date(now.getTime() + durationInDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-              : undefined,
-          }),
-        },
-        apiKey,
-        sanitizedBaseUrl,
-      );
+      const createSubscription = (customerRecord: any) =>
+        asaasFetch(
+          '/subscriptions',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              customer: customerRecord.id,
+              billingType: 'UNDEFINED',
+              value,
+              cycle,
+              description: planName ?? `Plano ${planId}`,
+              maxPayments: undefined,
+              endDate: durationInDays
+                ? new Date(now.getTime() + durationInDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+                : undefined,
+            }),
+          },
+          apiKey,
+          sanitizedBaseUrl,
+        );
 
-      const { json: subscriptionData, text: subscriptionText } = await readAsaasResponse(subscriptionResponse);
+      let subscriptionResponse = await createSubscription(resolvedCustomer);
+      let { json: subscriptionData, text: subscriptionText } = await readAsaasResponse(subscriptionResponse);
+
+      if (
+        !subscriptionResponse.ok &&
+        customer?.name &&
+        customer?.email &&
+        isRemovedCustomerError(subscriptionData ?? subscriptionText)
+      ) {
+        resolvedCustomer = await ensureCustomer({
+          customer,
+          apiKey,
+          baseUrl: sanitizedBaseUrl,
+          forceCreate: true,
+        });
+
+        subscriptionResponse = await createSubscription(resolvedCustomer);
+        ({ json: subscriptionData, text: subscriptionText } = await readAsaasResponse(subscriptionResponse));
+      }
 
       if (!subscriptionResponse.ok) {
         return NextResponse.json(
@@ -412,17 +492,17 @@ export async function POST(request: NextRequest) {
       let checkoutUrl = initialCheckoutUrl;
       let paymentId: string | undefined;
 
-      if ((!checkoutUrl || typeof checkoutUrl !== 'string') && subscriptionData?.id) {
-        const resolution = await ensureSubscriptionCheckout({
-          apiKey,
-          baseUrl: sanitizedBaseUrl,
-          subscriptionId: subscriptionData.id,
-          customerId: asaasCustomer.id,
-          value,
-          description: planName ?? `Plano ${planId ?? subscriptionData.id}`,
-          dueDate: dueDateIso,
-          planName,
-          planId,
+        if ((!checkoutUrl || typeof checkoutUrl !== 'string') && subscriptionData?.id) {
+          const resolution = await ensureSubscriptionCheckout({
+            apiKey,
+            baseUrl: sanitizedBaseUrl,
+            subscriptionId: subscriptionData.id,
+            customerId: resolvedCustomer.id,
+            value,
+            description: planName ?? `Plano ${planId ?? subscriptionData.id}`,
+            dueDate: dueDateIso,
+            planName,
+            planId,
         });
 
         checkoutUrl = resolution.checkoutUrl ?? checkoutUrl;
@@ -434,11 +514,11 @@ export async function POST(request: NextRequest) {
         message: checkoutUrl
           ? 'Assinatura criada com sucesso no Asaas.'
           : 'Assinatura criada. Consulte o painel do Asaas para compartilhar a cobrança.',
-        subscriptionId: subscriptionData?.id,
-        customerId: asaasCustomer?.id,
-        paymentId,
-      });
-    }
+          subscriptionId: subscriptionData?.id,
+          customerId: resolvedCustomer?.id,
+          paymentId,
+        });
+      }
 
     const totalSeats = typeof quantity === 'number' ? quantity : 1;
     const baseSeatPrice = typeof seatPrice === 'number' ? seatPrice : 0;
@@ -451,23 +531,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const paymentResponse = await asaasFetch(
-      '/payments',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          customer: asaasCustomer.id,
-          billingType: 'UNDEFINED',
-          value,
-          dueDate: dueDateIso,
-          description: `Usuários adicionais (${totalSeats}) - ${planName ?? planId ?? 'Plano'}`,
-        }),
-      },
-      apiKey,
-      sanitizedBaseUrl,
-    );
+    const createPayment = (customerRecord: any) =>
+      asaasFetch(
+        '/payments',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            customer: customerRecord.id,
+            billingType: 'UNDEFINED',
+            value,
+            dueDate: dueDateIso,
+            description: `Usuários adicionais (${totalSeats}) - ${planName ?? planId ?? 'Plano'}`,
+          }),
+        },
+        apiKey,
+        sanitizedBaseUrl,
+      );
 
-    const { json: paymentData, text: paymentText } = await readAsaasResponse(paymentResponse);
+    let paymentResponse = await createPayment(resolvedCustomer);
+    let { json: paymentData, text: paymentText } = await readAsaasResponse(paymentResponse);
+
+    if (
+      !paymentResponse.ok &&
+      customer?.name &&
+      customer?.email &&
+      isRemovedCustomerError(paymentData ?? paymentText)
+    ) {
+      resolvedCustomer = await ensureCustomer({
+        customer,
+        apiKey,
+        baseUrl: sanitizedBaseUrl,
+        forceCreate: true,
+      });
+
+      paymentResponse = await createPayment(resolvedCustomer);
+      ({ json: paymentData, text: paymentText } = await readAsaasResponse(paymentResponse));
+    }
 
     if (!paymentResponse.ok) {
       return NextResponse.json(
@@ -511,7 +610,7 @@ export async function POST(request: NextRequest) {
         ? 'Cobrança de usuários adicionais criada no Asaas.'
         : 'Cobrança criada. Consulte o painel do Asaas para compartilhar o pagamento.',
       paymentId: paymentData?.id,
-      customerId: asaasCustomer?.id,
+      customerId: resolvedCustomer?.id,
     });
   } catch (error) {
     console.error('Erro na integração com o Asaas', error);
