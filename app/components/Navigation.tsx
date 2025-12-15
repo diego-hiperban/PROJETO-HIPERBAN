@@ -85,7 +85,7 @@ export function Navigation() {
   }
 
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="relative z-50 border-b border-slate-200 bg-white">
       <div
         className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-4 px-6 py-4 sm:grid-cols-[auto,1fr,auto]"
       >
@@ -103,52 +103,58 @@ export function Navigation() {
             </div>
           )}
         </div>
-        <nav
-          className="relative flex w-full items-center justify-center gap-3 overflow-x-auto whitespace-nowrap text-sm font-medium sm:justify-center"
-        >
-          {primaryLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`rounded-full px-4 py-2 transition-colors ${
-                pathname === link.href ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
-          {gestaoLinks.length > 0 && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setGestaoOpen((previous) => !previous)}
-                className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${
-                  isGestaoActive ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+        <div className="w-full">
+          <nav
+            className="relative mx-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm font-medium sm:justify-center"
+          >
+            {primaryLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`rounded-full px-4 py-2 transition-colors ${
+                  pathname === link.href ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                Gestão
-                <span className="text-xs">{gestaoOpen ? '▴' : '▾'}</span>
-              </button>
-              {gestaoOpen && (
-                <div className="absolute right-0 z-40 mt-2 w-48 rounded-xl border border-slate-200 bg-white py-2 shadow-lg">
-                  {gestaoLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={`block px-4 py-2 text-sm transition-colors ${
-                        pathname.startsWith(link.href)
-                          ? 'bg-slate-100 text-slate-900'
-                          : 'text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </nav>
+                {link.label}
+              </Link>
+            ))}
+            {gestaoLinks.length > 0 && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setGestaoOpen((previous) => !previous)}
+                  className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                    isGestaoActive ? 'bg-slate-900 text-white shadow-sm shadow-slate-200' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                  aria-expanded={gestaoOpen}
+                  aria-haspopup="true"
+                >
+                  Gestão
+                  <span className="text-xs transition-transform duration-200" aria-hidden>
+                    {gestaoOpen ? '▴' : '▾'}
+                  </span>
+                </button>
+                {gestaoOpen && (
+                  <div className="absolute left-1/2 z-50 mt-3 w-60 -translate-x-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 text-left shadow-xl shadow-slate-200 sm:left-auto sm:right-0 sm:translate-x-0">
+                    {gestaoLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className={`block px-4 py-2 text-sm transition-colors ${
+                          pathname.startsWith(link.href)
+                            ? 'bg-slate-900/5 text-slate-900'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </nav>
+        </div>
         <div className="flex w-full items-center justify-end gap-4 sm:justify-end">
           <div className="text-right">
             <p className="text-sm font-semibold text-slate-900">{currentUser.name}</p>

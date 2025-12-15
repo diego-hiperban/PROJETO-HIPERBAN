@@ -4,7 +4,7 @@ import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } fro
 import { useRouter } from 'next/navigation';
 import { ProtectedPage } from '../components/ProtectedPage';
 import { useAuth } from '../context/AuthContext';
-import { BillingStatus, Plan, Role, UserStatus } from '@/lib/data';
+import { BillingStatus, Plan, Role, UserStatus } from '@/lib/platform-data';
 
 const STATUS_LABELS: Record<UserStatus, string> = {
   active: 'Ativo',
@@ -21,6 +21,7 @@ const ROLE_LABELS: Record<Role, string> = {
 const BILLING_STATUS_LABELS: Record<BillingStatus, string> = {
   active: 'Em dia',
   trial: 'Período de teste',
+  pending: 'Pagamento pendente',
   overdue: 'Em atraso',
   expired: 'Expirado',
   cancelled: 'Cancelado',
@@ -29,8 +30,9 @@ const BILLING_STATUS_LABELS: Record<BillingStatus, string> = {
 const BILLING_STATUS_CLASSES: Record<BillingStatus, string> = {
   active: 'bg-emerald-100 text-emerald-700',
   trial: 'bg-sky-100 text-sky-700',
-  overdue: 'bg-amber-100 text-amber-700',
-  expired: 'bg-rose-100 text-rose-700',
+  pending: 'bg-amber-100 text-amber-700',
+  overdue: 'bg-rose-100 text-rose-700',
+  expired: 'bg-rose-200 text-rose-700',
   cancelled: 'bg-slate-200 text-slate-600',
 };
 
@@ -108,7 +110,7 @@ export default function UsersPage() {
     billingCustomPrice: '',
     billingSeatsIncluded: '',
     billingAdditionalSeats: '',
-    billingStatus: 'active' as BillingStatus,
+    billingStatus: 'pending' as BillingStatus,
     billingTrialDays: '',
     billingExpiresAt: '',
   });
@@ -333,7 +335,7 @@ export default function UsersPage() {
         billingCustomPrice: '',
         billingSeatsIncluded: '',
         billingAdditionalSeats: '',
-        billingStatus: 'active',
+        billingStatus: 'pending',
         billingTrialDays: '',
         billingExpiresAt: '',
       }));
@@ -369,7 +371,7 @@ export default function UsersPage() {
         typeof editingUser.billing?.additionalSeats === 'number'
           ? String(editingUser.billing.additionalSeats)
           : '',
-      billingStatus: editingUser.billing?.status ?? 'active',
+      billingStatus: editingUser.billing?.status ?? 'pending',
       billingTrialDays: '',
       billingExpiresAt: editingUser.billing?.expiresAt
         ? editingUser.billing.expiresAt.slice(0, 10)
@@ -714,6 +716,7 @@ export default function UsersPage() {
               >
                 <option value="all">Todos</option>
                 <option value="active">Em dia</option>
+                <option value="pending">Pagamento pendente</option>
                 <option value="trial">Período de teste</option>
                 <option value="overdue">Em atraso</option>
                 <option value="expired">Expirado</option>

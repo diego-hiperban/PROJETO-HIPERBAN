@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
-import { Role } from '@/lib/data';
+import { Role } from '@/lib/platform-data';
 
 type Props = {
   children: React.ReactNode;

@@ -23,7 +23,7 @@ const mortgageInitialState = {
 export default function PublicStorePage() {
   const params = useParams<{ userId: string }>();
   const searchParams = useSearchParams();
-  const { users, products, createOrder } = useAuth();
+  const { users, products, createOrder, settings } = useAuth();
 
   const owner = useMemo(() => users.find((user) => user.id === params.userId) ?? null, [users, params.userId]);
   const [selectedProduct, setSelectedProduct] = useState(() => searchParams.get('produto') ?? '');
@@ -43,6 +43,23 @@ export default function PublicStorePage() {
 
   const selectedProductData = useMemo(() => products.find((product) => product.id === selectedProduct) ?? null, [products, selectedProduct]);
   const isCredihomeProduct = selectedProductData?.integration?.type === 'credihome';
+
+  const credihomeCredentials = useMemo(
+    () => ({
+      username: settings.credihomeApiUsername ?? undefined,
+      password: settings.credihomeApiPassword ?? undefined,
+      partnerCode: settings.credihomePartnerCode ?? undefined,
+      baseUrl: settings.credihomeApiUrl ?? undefined,
+    }),
+    [
+      settings.credihomeApiUrl,
+      settings.credihomeApiUsername,
+      settings.credihomeApiPassword,
+      settings.credihomePartnerCode,
+    ],
+  );
+
+  const hasCredihomeCredentials = Boolean(credihomeCredentials.username && credihomeCredentials.password);
 
   useEffect(() => {
     setSubmitError('');
@@ -109,6 +126,12 @@ export default function PublicStorePage() {
           return;
         }
 
+        if (!hasCredihomeCredentials) {
+          setIsSubmitting(false);
+          setSubmitError('Simulações temporariamente indisponíveis. Configure as credenciais Credihome na plataforma.');
+          return;
+        }
+
         await submitCredihomeSimulation({
           channel: selectedProductData.integration?.type === 'credihome'
             ? selectedProductData.integration.partnerCode
@@ -132,7 +155,7 @@ export default function PublicStorePage() {
             monthlyIncome,
             term: Number(mortgageForm.term) || undefined,
           },
-        });
+        }, { credentials: credihomeCredentials });
       }
 
       createOrder({

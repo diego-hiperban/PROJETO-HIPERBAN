@@ -69,20 +69,24 @@ A forma mais simples de disponibilizar esta aplicação na web é pela [Vercel](
 - Personalizar o domínio da loja e o link de compartilhamento (`storeBaseUrl` em `lib/data.ts`).
 - Conectar um encurtador ou ferramenta de afiliados para os links individuais de produtos.
 - Adicionar testes automatizados e monitoramento em produção.
+- Sempre que uma feature exigir novas tabelas ou colunas, atualize o `prisma/schema.prisma` **e** versione a migration em `prisma/migrations/` para que os dados sejam preservados nos deploys.
 
 ## Integração Credihome
 
-O card **Crédito Imobiliário** da loja envia automaticamente os cadastros para a API da Credihome. Configure as seguintes variáveis de ambiente antes de publicar o projeto (ex.: em `.env.local` ou nos settings da Vercel):
+O card **Crédito Imobiliário** da loja envia automaticamente os cadastros para a API da Credihome e, agora, permite consultar o andamento das propostas diretamente na plataforma. Configure as seguintes variáveis de ambiente antes de publicar o projeto (ex.: em `.env.local` ou nos settings da Vercel):
 
 | Variável | Obrigatória | Descrição |
 |----------|-------------|-----------|
-| `CREDIHOME_API_KEY` | Sim | Token fornecido pela Credihome. É usado tanto no header `Authorization` (com prefixo `Bearer`) quanto no header `x-api-key`. |
-| `CREDIHOME_API_BASE_URL` | Não | URL base da API. Padrão: `https://api.credihome.com.br`. |
-| `CREDIHOME_PARTNER_CODE` | Não | Código de parceiro/canal enviado no campo `channel`. Útil para rastrear origens. |
-| `CREDIHOME_AUTH_HEADER` / `CREDIHOME_AUTH_SCHEME` | Não | Personalize o header e o prefixo utilizados para autenticação, se sua credencial exigir outro formato. |
-| `CREDIHOME_FALLBACK_HEADER` | Não | Header alternativo para enviar o token (padrão `x-api-key`). |
+| `CREDIHOME_BASE_URL` | Não | URL base da API. Padrão: `https://api-partner.credihome.com.br/v1/production`. |
+| `CREDIHOME_LOGIN` | Sim | Login utilizado no endpoint `POST /login` para gerar o token JWT. |
+| `CREDIHOME_PASSWORD` | Sim | Senha correspondente ao login acima. |
+| `CREDIHOME_CHANNEL` | Não | Código de parceiro/canal enviado no header `channel`. Útil para rastrear origens. |
 
-> Caso a API exija campos adicionais, ajuste os formulários em `/app/store/page.tsx` e `/app/loja/[userId]/page.tsx`. A integração atual cobre nome, CPF, contato e dados básicos do imóvel.
+> Caso a API exija campos adicionais, ajuste os formulários em `/app/store/page.tsx` e `/app/loja/[userId]/page.tsx`. A integração atual cobre nome, CPF, contato e dados básicos do imóvel e permite acompanhar o pipeline por protocolo, CPF ou e-mail.
+
+> As credenciais cadastradas em **Segurança → Credenciais Credihome** são anexadas automaticamente aos requests da simulação e da consulta de propostas, evitando falhas de autenticação durante os testes locais.
+
+> A aba **Segurança** concentra o cadastro da URL base, login, senha e código de parceiro para facilitar os testes locais. Se for necessário personalizar caminhos, escopos ou parâmetros adicionais, defina-os diretamente nas variáveis de ambiente citadas na documentação da Credihome.
 
 ## Gestão de planos e integração Asaas
 

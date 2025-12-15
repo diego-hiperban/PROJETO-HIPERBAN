@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { SetStateAction } from 'react';
 import {
   BillingStatus,
   Order,
@@ -18,7 +19,7 @@ import {
   profiles as seedProfiles,
   storeBaseUrl,
   users as seedUsers,
-} from '@/lib/data';
+} from '@/lib/platform-data';
 import { readValue, writeValue } from '@/lib/persistence';
 import {
   DEFAULT_TENANT_PALETTE,
@@ -51,6 +52,11 @@ export type TenantBranding = {
 type PlatformSettings = {
   asaasApiKey?: string;
   asaasApiUrl?: string;
+  credihomeApiKey?: string;
+  credihomeApiUsername?: string;
+  credihomeApiPassword?: string;
+  credihomePartnerCode?: string;
+  credihomeApiUrl?: string;
   credentials: StoredCredential[];
   branding: Record<string, TenantBranding>;
 };
@@ -111,6 +117,11 @@ interface AuthContextValue {
   ) => void;
   updateUserBilling: (userId: string, data: Partial<UserBilling>) => void;
   recordPayment: (userId: string, payment: PaymentRecord, nextStatus?: BillingStatus) => void;
+  removePaymentRecord: (
+    userId: string,
+    paymentId: string,
+    options?: { clearCheckout?: boolean; statusOverride?: BillingStatus },
+  ) => void;
   requestCheckout: (params: CheckoutRequest) => Promise<CheckoutResponse>;
   getPlanById: (planId: string) => Plan | undefined;
   isBillingRestricted: (user?: User | null) => boolean;
@@ -246,6 +257,56 @@ const cleanDocument = (value?: string | null) => {
   if (!value) return undefined;
   const numeric = value.replace(/\D+/g, '');
   return numeric.length > 0 ? numeric : undefined;
+};
+
+const isValidDate = (value?: string) => {
+  if (!value) return false;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime());
+};
+
+const sortPaymentsByDateDesc = (records: PaymentRecord[]): PaymentRecord[] =>
+  records
+    .slice()
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+const determineBillingStatus = ({
+  history,
+  previousStatus,
+  trialEndsAt,
+  override,
+}: {
+  history: PaymentRecord[];
+  previousStatus?: BillingStatus;
+  trialEndsAt?: string;
+  override?: BillingStatus;
+}): BillingStatus => {
+  if (override) {
+    return override;
+  }
+
+  const hasPaid = history.some((entry) => entry.status === 'paid');
+  if (hasPaid) {
+    return 'active';
+  }
+
+  if (previousStatus === 'cancelled' || previousStatus === 'expired') {
+    return previousStatus;
+  }
+
+  const hasOverdue = history.some((entry) => entry.status === 'overdue');
+  if (hasOverdue) {
+    return 'overdue';
+  }
+
+  if (trialEndsAt && isValidDate(trialEndsAt)) {
+    const trialDate = new Date(trialEndsAt);
+    if (trialDate.getTime() > Date.now()) {
+      return 'trial';
+    }
+  }
+
+  return 'pending';
 };
 
 const isValidCPF = (value: string): boolean => {
@@ -585,8 +646,12 @@ const normalizeBilling = (billing?: UserBilling | null): UserBilling | undefined
     status = 'expired';
   }
 
+  if (status === 'pending' && expiresAt && expiresAt.getTime() < now.getTime()) {
+    status = 'overdue';
+  }
+
   if (status === 'overdue' && expiresAt && expiresAt.getTime() >= now.getTime()) {
-    status = 'active';
+    status = 'pending';
   }
 
   return {
@@ -640,6 +705,7 @@ export function AuthProvider({ children }: Props) {
   const [productsState, setProductsState] = useState<Product[]>(seedProducts);
   const [plansState, setPlansState] = useState<Plan[]>(seedPlans);
   const [settingsState, setSettingsState] = useState<PlatformSettings>(DEFAULT_SETTINGS);
+  const hydratedRef = useRef(false);
 
   const activePalette = useMemo(() => {
     const branding = settingsState.branding ?? {};
@@ -666,19 +732,77 @@ export function AuthProvider({ children }: Props) {
     return ensurePalette(DEFAULT_TENANT_PALETTE);
   }, [currentUser, settingsState.branding]);
 
+  const persistOrders = useCallback((updater: SetStateAction<Order[]>) => {
+    setOrders((previous) => {
+      const next = typeof updater === 'function' ? (updater as (value: Order[]) => Order[])(previous) : updater;
+      if (hydratedRef.current) {
+        void writeValue(ORDERS_KEY, next);
+      }
+      return next;
+    });
+  }, []);
+
+  const persistUsers = useCallback((updater: SetStateAction<User[]>) => {
+    setUsersState((previous) => {
+      const next = typeof updater === 'function' ? (updater as (value: User[]) => User[])(previous) : updater;
+      const normalized = next.map(normalizeUser);
+      if (hydratedRef.current) {
+        void writeValue(USERS_KEY, normalized);
+      }
+      setCurrentUser((prevCurrent) => {
+        if (!prevCurrent) return prevCurrent;
+        const updated = normalized.find((user) => user.id === prevCurrent.id);
+        return updated ?? prevCurrent;
+      });
+      return normalized;
+    });
+  }, []);
+
+  const persistProfiles = useCallback((updater: SetStateAction<UserProfile[]>) => {
+    setProfilesState((previous) => {
+      const next = typeof updater === 'function' ? (updater as (value: UserProfile[]) => UserProfile[])(previous) : updater;
+      if (hydratedRef.current) {
+        void writeValue(PROFILES_KEY, next);
+      }
+      return next;
+    });
+  }, []);
+
+  const persistProducts = useCallback((updater: SetStateAction<Product[]>) => {
+    setProductsState((previous) => {
+      const next = typeof updater === 'function' ? (updater as (value: Product[]) => Product[])(previous) : updater;
+      if (hydratedRef.current) {
+        void writeValue(PRODUCTS_KEY, next);
+      }
+      return next;
+    });
+  }, []);
+
+  const persistPlans = useCallback((updater: SetStateAction<Plan[]>) => {
+    setPlansState((previous) => {
+      const next = typeof updater === 'function' ? (updater as (value: Plan[]) => Plan[])(previous) : updater;
+      if (hydratedRef.current) {
+        void writeValue(PLANS_KEY, next);
+      }
+      return next;
+    });
+  }, []);
+
+  const persistSettings = useCallback((updater: SetStateAction<PlatformSettings>) => {
+    setSettingsState((previous) => {
+      const next = typeof updater === 'function' ? (updater as (value: PlatformSettings) => PlatformSettings)(previous) : updater;
+      if (hydratedRef.current) {
+        void writeValue(SETTINGS_KEY, next);
+      }
+      return next;
+    });
+  }, []);
+
   const updateUsers = useCallback(
     (updater: (previous: User[]) => User[]) => {
-      setUsersState((previous) => {
-        const next = updater(previous).map(normalizeUser);
-        setCurrentUser((prevCurrent) => {
-          if (!prevCurrent) return prevCurrent;
-          const updated = next.find((user) => user.id === prevCurrent.id);
-          return updated ?? prevCurrent;
-        });
-        return next;
-      });
+      persistUsers(updater);
     },
-    [setCurrentUser],
+    [persistUsers],
   );
 
   const [hydrated, setHydrated] = useState(false);
@@ -714,29 +838,33 @@ export function AuthProvider({ children }: Props) {
           setCurrentUser(normalizeUser(storedUser));
         }
 
-        if (storedOrders && storedOrders.length > 0) {
-          setOrders(storedOrders.map((order) => ({ ...order, customerDocument: order.customerDocument ?? '' })));
+        const normalizedOrders = storedOrders?.map((order) => ({
+          ...order,
+          customerDocument: order.customerDocument ?? '',
+        }));
+        if (normalizedOrders) {
+          setOrders(normalizedOrders);
         }
 
-        if (storedUsers && storedUsers.length > 0) {
-          const normalized = storedUsers.map(normalizeUser);
-          setUsersState(normalized);
+        const normalizedUsers = storedUsers?.map(normalizeUser);
+        if (normalizedUsers) {
+          setUsersState(normalizedUsers);
           setCurrentUser((prev) => {
             if (!prev) return prev;
-            const updated = normalized.find((user) => user.id === prev.id);
+            const updated = normalizedUsers.find((user) => user.id === prev.id);
             return updated ?? prev;
           });
         }
 
-        if (storedProfiles && storedProfiles.length > 0) {
+        if (storedProfiles) {
           setProfilesState(storedProfiles);
         }
 
-        if (storedProducts && storedProducts.length > 0) {
+        if (storedProducts) {
           setProductsState(mergeProductsWithSeeds(storedProducts, seedProducts));
         }
 
-        if (storedPlans && storedPlans.length > 0) {
+        if (storedPlans) {
           setPlansState(mergePlansWithSeeds(storedPlans, seedPlans));
         }
 
@@ -762,12 +890,48 @@ export function AuthProvider({ children }: Props) {
               mergedSettings.asaasApiUrl = savedUrl;
             }
           }
+
+          if (!mergedSettings.credihomeApiKey) {
+            const savedKey = credentials.find((item) => item.id === 'credihome-api-key')?.value;
+            if (savedKey) {
+              mergedSettings.credihomeApiKey = savedKey;
+            }
+          }
+
+          if (!mergedSettings.credihomeApiUsername) {
+            const savedUsername = credentials.find((item) => item.id === 'credihome-api-username')?.value;
+            if (savedUsername) {
+              mergedSettings.credihomeApiUsername = savedUsername;
+            }
+          }
+
+          if (!mergedSettings.credihomeApiPassword) {
+            const savedPassword = credentials.find((item) => item.id === 'credihome-api-password')?.value;
+            if (savedPassword) {
+              mergedSettings.credihomeApiPassword = savedPassword;
+            }
+          }
+
+          if (!mergedSettings.credihomeApiUrl) {
+            const savedUrl = credentials.find((item) => item.id === 'credihome-api-url')?.value;
+            if (savedUrl) {
+              mergedSettings.credihomeApiUrl = savedUrl;
+            }
+          }
+
+          if (!mergedSettings.credihomePartnerCode) {
+            const savedPartnerCode = credentials.find((item) => item.id === 'credihome-partner-code')?.value;
+            if (savedPartnerCode) {
+              mergedSettings.credihomePartnerCode = savedPartnerCode;
+            }
+          }
           setSettingsState(mergedSettings);
         }
       } catch (error) {
         console.error('Erro ao restaurar dados salvos localmente', error);
       } finally {
         if (!cancelled) {
+          hydratedRef.current = true;
           setHydrated(true);
         }
       }
@@ -836,12 +1000,17 @@ export function AuthProvider({ children }: Props) {
   }, [activePalette]);
 
   const updateSettings = useCallback((data: Partial<PlatformSettings>) => {
-    setSettingsState((previous) => {
+    persistSettings((previous) => {
       const {
         credentials: incomingCredentials,
         branding: incomingBranding,
         asaasApiKey: incomingApiKey,
         asaasApiUrl: incomingApiUrl,
+        credihomeApiKey: incomingCredihomeKey,
+        credihomeApiUsername: incomingCredihomeUsername,
+        credihomeApiPassword: incomingCredihomePassword,
+        credihomePartnerCode: incomingCredihomePartnerCode,
+        credihomeApiUrl: incomingCredihomeApiUrl,
         ...otherSettings
       } = data;
 
@@ -915,6 +1084,171 @@ export function AuthProvider({ children }: Props) {
         }
       }
 
+      let nextCredihomeKey = previous.credihomeApiKey;
+      if (typeof incomingCredihomeKey !== 'undefined') {
+        const trimmed = incomingCredihomeKey?.trim();
+        nextCredihomeKey = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-api-key');
+        if (nextCredihomeKey) {
+          const normalized = normalizeCredential({
+            id: 'credihome-api-key',
+            label: 'Chave API Credihome',
+            scope: 'integration',
+            value: nextCredihomeKey,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeApiKey) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-api-key');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-api-key',
+            label: 'Chave API Credihome',
+            scope: 'integration',
+            value: previous.credihomeApiKey,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
+      let nextCredihomeUsername = previous.credihomeApiUsername;
+      if (typeof incomingCredihomeUsername !== 'undefined') {
+        const trimmed = incomingCredihomeUsername?.trim();
+        nextCredihomeUsername = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-api-username');
+        if (nextCredihomeUsername) {
+          const normalized = normalizeCredential({
+            id: 'credihome-api-username',
+            label: 'Usuário Credihome',
+            scope: 'integration',
+            value: nextCredihomeUsername,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeApiUsername) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-api-username');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-api-username',
+            label: 'Usuário Credihome',
+            scope: 'integration',
+            value: previous.credihomeApiUsername,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
+      let nextCredihomePassword = previous.credihomeApiPassword;
+      if (typeof incomingCredihomePassword !== 'undefined') {
+        const trimmed = incomingCredihomePassword?.trim();
+        nextCredihomePassword = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-api-password');
+        if (nextCredihomePassword) {
+          const normalized = normalizeCredential({
+            id: 'credihome-api-password',
+            label: 'Senha Credihome',
+            scope: 'integration',
+            value: nextCredihomePassword,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeApiPassword) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-api-password');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-api-password',
+            label: 'Senha Credihome',
+            scope: 'integration',
+            value: previous.credihomeApiPassword,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
+      let nextCredihomeApiUrl = previous.credihomeApiUrl;
+      if (typeof incomingCredihomeApiUrl !== 'undefined') {
+        const trimmed = incomingCredihomeApiUrl?.trim();
+        nextCredihomeApiUrl = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-api-url');
+        if (nextCredihomeApiUrl) {
+          const normalized = normalizeCredential({
+            id: 'credihome-api-url',
+            label: 'URL API Credihome',
+            scope: 'integration',
+            value: nextCredihomeApiUrl,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomeApiUrl) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-api-url');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-api-url',
+            label: 'URL API Credihome',
+            scope: 'integration',
+            value: previous.credihomeApiUrl,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
+      let nextCredihomePartnerCode = previous.credihomePartnerCode;
+      if (typeof incomingCredihomePartnerCode !== 'undefined') {
+        const trimmed = incomingCredihomePartnerCode?.trim();
+        nextCredihomePartnerCode = trimmed ? trimmed : undefined;
+        nextCredentials = nextCredentials.filter((item) => item.id !== 'credihome-partner-code');
+        if (nextCredihomePartnerCode) {
+          const normalized = normalizeCredential({
+            id: 'credihome-partner-code',
+            label: 'Código parceiro Credihome',
+            scope: 'integration',
+            value: nextCredihomePartnerCode,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      } else if (!incomingCredentials && previous.credihomePartnerCode) {
+        const exists = nextCredentials.some((item) => item.id === 'credihome-partner-code');
+        if (!exists) {
+          const normalized = normalizeCredential({
+            id: 'credihome-partner-code',
+            label: 'Código parceiro Credihome',
+            scope: 'integration',
+            value: previous.credihomePartnerCode,
+            updatedAt: new Date().toISOString(),
+          });
+          if (normalized) {
+            nextCredentials = [...nextCredentials, normalized];
+          }
+        }
+      }
+
       nextCredentials = normalizeCredentialList(nextCredentials);
 
       let nextBranding = previous.branding ?? {};
@@ -929,6 +1263,11 @@ export function AuthProvider({ children }: Props) {
         branding: nextBranding,
         asaasApiKey: nextApiKey,
         asaasApiUrl: nextApiUrl,
+        credihomeApiKey: nextCredihomeKey,
+        credihomeApiUsername: nextCredihomeUsername,
+        credihomeApiPassword: nextCredihomePassword,
+        credihomeApiUrl: nextCredihomeApiUrl,
+        credihomePartnerCode: nextCredihomePartnerCode,
       };
 
       if (!merged.asaasApiKey) {
@@ -945,13 +1284,62 @@ export function AuthProvider({ children }: Props) {
         }
       }
 
+      if (!merged.credihomeApiKey) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-api-key')?.value;
+        if (stored) {
+          merged.credihomeApiKey = stored;
+        }
+      }
+
+      if (!merged.credihomeApiUsername) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-api-username')?.value;
+        if (stored) {
+          merged.credihomeApiUsername = stored;
+        }
+      }
+
+      if (!merged.credihomeApiPassword) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-api-password')?.value;
+        if (stored) {
+          merged.credihomeApiPassword = stored;
+        }
+      }
+
+      if (!merged.credihomeApiUrl) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-api-url')?.value;
+        if (stored) {
+          merged.credihomeApiUrl = stored;
+        }
+      }
+
+      if (!merged.credihomePartnerCode) {
+        const stored = nextCredentials.find((item) => item.id === 'credihome-partner-code')?.value;
+        if (stored) {
+          merged.credihomePartnerCode = stored;
+        }
+      }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       return merged;
     });
-  }, []);
+  }, [persistSettings]);
 
   const updateTenantBranding = useCallback(
     (tenantId: string, data: TenantBrandingUpdate) => {
-      setSettingsState((previous) => {
+      persistSettings((previous) => {
         const normalizedId = tenantId?.trim();
         if (!normalizedId) {
           return previous;
@@ -1083,7 +1471,7 @@ export function AuthProvider({ children }: Props) {
         };
       });
     },
-    [],
+    [persistSettings],
   );
 
   const login = useCallback(async (email: string, password: string) => {
@@ -1127,15 +1515,18 @@ export function AuthProvider({ children }: Props) {
         referrerId,
         createdAt: new Date().toISOString(),
       };
-      setOrders((previous) => [newOrder, ...previous]);
+      persistOrders((previous) => [newOrder, ...previous]);
       return newOrder;
     },
-    [],
+    [persistOrders],
   );
 
-  const updateOrderStatus = useCallback((orderId: string, status: Order['status']) => {
-    setOrders((previous) => previous.map((order) => (order.id === orderId ? { ...order, status } : order)));
-  }, []);
+  const updateOrderStatus = useCallback(
+    (orderId: string, status: Order['status']) => {
+      persistOrders((previous) => previous.map((order) => (order.id === orderId ? { ...order, status } : order)));
+    },
+    [persistOrders],
+  );
 
   const getBaseUrl = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -1313,7 +1704,7 @@ export function AuthProvider({ children }: Props) {
             : !trialEndsAt
               ? addDays(now, plan.durationInDays).toISOString()
               : undefined;
-          const status: BillingStatus = billingStatus ?? (trialEndsAt ? 'trial' : 'active');
+          const status: BillingStatus = billingStatus ?? (trialEndsAt ? 'trial' : 'pending');
           billing = {
             planId: plan.id,
             planName: plan.name,
@@ -1468,11 +1859,11 @@ export function AuthProvider({ children }: Props) {
         return previous;
       });
 
-      setOrders((previous) => previous.filter((order) => !idsToRemove.has(order.ownerId)));
+      persistOrders((previous) => previous.filter((order) => !idsToRemove.has(order.ownerId)));
 
       updateUsers((previous) => previous.filter((user) => !idsToRemove.has(user.id)));
     },
-    [setCurrentUser, setOrders, updateUsers, usersState],
+    [persistOrders, setCurrentUser, updateUsers, usersState],
   );
 
   const createProfile = useCallback(
@@ -1483,10 +1874,10 @@ export function AuthProvider({ children }: Props) {
         description,
         role,
       };
-      setProfilesState((previous) => [...previous, profile]);
+      persistProfiles((previous) => [...previous, profile]);
       return profile;
     },
-    [],
+    [persistProfiles],
   );
 
   const createProduct = useCallback(
@@ -1502,17 +1893,20 @@ export function AuthProvider({ children }: Props) {
         imageUrl,
         integration,
       };
-      setProductsState((previous) => [product, ...previous]);
+      persistProducts((previous) => [product, ...previous]);
       return product;
     },
-    [],
+    [persistProducts],
   );
 
-  const updateProduct = useCallback((productId: string, data: Partial<NewProductInput>) => {
-    setProductsState((previous) =>
-      previous.map((product) => (product.id === productId ? { ...product, ...data } : product)),
-    );
-  }, []);
+  const updateProduct = useCallback(
+    (productId: string, data: Partial<NewProductInput>) => {
+      persistProducts((previous) =>
+        previous.map((product) => (product.id === productId ? { ...product, ...data } : product)),
+      );
+    },
+    [persistProducts],
+  );
 
   const createPlan = useCallback(
     ({
@@ -1540,15 +1934,18 @@ export function AuthProvider({ children }: Props) {
         additionalSeatLimit,
         trialDays,
       };
-      setPlansState((previous) => [...previous, plan]);
+      persistPlans((previous) => [...previous, plan]);
       return plan;
     },
-    [],
+    [persistPlans],
   );
 
-  const updatePlan = useCallback((planId: string, data: Partial<NewPlanInput>) => {
-    setPlansState((previous) => previous.map((plan) => (plan.id === planId ? { ...plan, ...data } : plan)));
-  }, []);
+  const updatePlan = useCallback(
+    (planId: string, data: Partial<NewPlanInput>) => {
+      persistPlans((previous) => previous.map((plan) => (plan.id === planId ? { ...plan, ...data } : plan)));
+    },
+    [persistPlans],
+  );
 
   const getPlanById = useCallback((planId: string) => plansState.find((plan) => plan.id === planId), [plansState]);
 
@@ -1593,6 +1990,15 @@ export function AuthProvider({ children }: Props) {
               : undefined;
 
           const currentHistory = user.billing?.history ?? [];
+          const previousStatus = user.billing?.status;
+          const derivedStatus: BillingStatus =
+            typeof status !== 'undefined'
+              ? status
+              : previousStatus
+                ? previousStatus
+                : trialEndsAt
+                  ? 'trial'
+                  : 'pending';
 
           const billing: UserBilling = {
             planId: plan.id,
@@ -1600,7 +2006,7 @@ export function AuthProvider({ children }: Props) {
             period: plan.period,
             price: plan.price,
             customPrice: customPrice ?? user.billing?.customPrice,
-            status: status ?? (trialEndsAt ? 'trial' : 'active'),
+            status: derivedStatus,
             seatsIncluded: seatsIncluded ?? plan.seatsIncluded,
             additionalSeats: additionalSeats ?? user.billing?.additionalSeats ?? 0,
             additionalSeatPrice: plan.additionalSeatPrice,
@@ -1690,20 +2096,35 @@ export function AuthProvider({ children }: Props) {
             dueDate: dueDate ? dueDate.toISOString() : payment.dueDate,
           };
 
-          const history = [normalizedRecord]
-            .concat(
-              (user.billing.history ?? []).filter(
-                (entry) => (entry.asaasPaymentId ?? entry.id) !== (payment.asaasPaymentId ?? payment.id),
-              ),
-            )
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          const history = [normalizedRecord].concat(
+            (user.billing.history ?? []).filter(
+              (entry) => (entry.asaasPaymentId ?? entry.id) !== (payment.asaasPaymentId ?? payment.id),
+            ),
+          );
+
+          const sortedHistory = sortPaymentsByDateDesc(history);
+          const lastPaid = sortedHistory.find((entry) => entry.status === 'paid');
+          const overrideStatus = nextStatus ?? (isPaid ? 'active' : isOverdue ? 'overdue' : undefined);
+          const status = determineBillingStatus({
+            history: sortedHistory,
+            previousStatus: user.billing.status,
+            trialEndsAt: user.billing.trialEndsAt,
+            override: overrideStatus,
+          });
+
+          let expiresAt = user.billing.expiresAt;
+          if (isPaid) {
+            expiresAt = nextExpiresAt;
+          } else if (!lastPaid) {
+            expiresAt = status === 'trial' ? user.billing.expiresAt : undefined;
+          }
 
           const billing: UserBilling = {
             ...user.billing,
-            history,
-            lastPaymentAt: isPaid ? normalizedRecord.date : user.billing.lastPaymentAt,
-            status: nextStatus ?? (isPaid ? 'active' : isOverdue ? 'overdue' : user.billing.status),
-            expiresAt: nextExpiresAt,
+            history: sortedHistory,
+            lastPaymentAt: lastPaid?.date,
+            status,
+            expiresAt,
             checkoutUrl: isPaid ? undefined : user.billing.checkoutUrl,
           };
 
@@ -1712,6 +2133,51 @@ export function AuthProvider({ children }: Props) {
       );
     },
     [plansState, updateUsers],
+  );
+
+  const removePaymentRecord = useCallback(
+    (
+      userId: string,
+      paymentId: string,
+      { clearCheckout = false, statusOverride }: { clearCheckout?: boolean; statusOverride?: BillingStatus } = {},
+    ) => {
+      updateUsers((previous) =>
+        previous.map((user) => {
+          if (user.id !== userId || !user.billing) {
+            return user;
+          }
+
+          const filtered = (user.billing.history ?? []).filter(
+            (entry) => (entry.asaasPaymentId ?? entry.id) !== paymentId,
+          );
+          const sortedHistory = sortPaymentsByDateDesc(filtered);
+          const lastPaid = sortedHistory.find((entry) => entry.status === 'paid');
+          const status = determineBillingStatus({
+            history: sortedHistory,
+            previousStatus: user.billing.status,
+            trialEndsAt: user.billing.trialEndsAt,
+            override: statusOverride,
+          });
+
+          let expiresAt = user.billing.expiresAt;
+          if (!lastPaid) {
+            expiresAt = status === 'trial' ? user.billing.expiresAt : undefined;
+          }
+
+          const billing: UserBilling = {
+            ...user.billing,
+            history: sortedHistory,
+            lastPaymentAt: lastPaid?.date,
+            status,
+            expiresAt,
+            checkoutUrl: clearCheckout ? undefined : user.billing.checkoutUrl,
+          };
+
+          return { ...user, billing };
+        }),
+      );
+    },
+    [updateUsers],
   );
 
   const requestCheckout = useCallback(
@@ -1801,6 +2267,42 @@ export function AuthProvider({ children }: Props) {
           }
         }
 
+        if (responseBody.paymentId) {
+          let pendingAmount: number | undefined;
+          let description: string | undefined;
+
+          if (params.type === 'plan') {
+            const targetPlan = plansState.find((item) => item.id === params.planId);
+            pendingAmount =
+              typeof params.customPrice === 'number'
+                ? params.customPrice
+                : targetPlan?.price ?? undefined;
+            description = targetPlan?.name
+              ? `Assinatura ${targetPlan.name}`
+              : 'Cobrança de assinatura Asaas';
+          } else if (params.type === 'seat') {
+            const seats = typeof params.quantity === 'number' ? params.quantity : 0;
+            pendingAmount = seats > 0 ? params.seatPrice * seats : undefined;
+            description = seats > 0 ? `Usuários adicionais (${seats})` : 'Cobrança de usuários adicionais';
+          }
+
+          if (typeof pendingAmount === 'number' && pendingAmount > 0) {
+            recordPayment(
+              params.userId,
+              {
+                id: responseBody.paymentId,
+                asaasPaymentId: responseBody.paymentId,
+                amount: pendingAmount,
+                date: new Date().toISOString(),
+                status: 'pending',
+                description: description ?? 'Cobrança registrada no Asaas',
+                method: 'Asaas',
+              },
+              'pending',
+            );
+          }
+        }
+
         return responseBody;
       } catch (error) {
         console.error('Erro ao solicitar checkout', error);
@@ -1819,7 +2321,7 @@ export function AuthProvider({ children }: Props) {
       if (!target) return false;
       if (target.role === 'admin') return false;
       const status = target.billing?.status;
-      return status === 'overdue' || status === 'expired' || status === 'cancelled';
+      return status === 'pending' || status === 'overdue' || status === 'expired' || status === 'cancelled';
     },
     [currentUser],
   );
@@ -1868,6 +2370,7 @@ export function AuthProvider({ children }: Props) {
       getRemainingTrialDays,
       updateSettings,
       updateTenantBranding,
+      removePaymentRecord,
     }),
     [
       currentUser,
@@ -1897,6 +2400,7 @@ export function AuthProvider({ children }: Props) {
       assignPlanToUser,
       updateUserBilling,
       recordPayment,
+      removePaymentRecord,
       requestCheckout,
       getPlanById,
       isBillingRestricted,
